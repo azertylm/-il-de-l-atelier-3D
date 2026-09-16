@@ -1,0 +1,254 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile with multi-device synchronized artist, gallerist, or visitor data",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "User unique ID matching auth.uid"
+        },
+        "email": {
+          "type": "string",
+          "description": "User account email address"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Public or professional artist/gallerist/visitor name",
+          "maxLength": 150
+        },
+        "role": {
+          "type": "string",
+          "description": "Account role: artist, gallerist, or visitor_collector",
+          "enum": ["artist", "gallerist", "visitor_collector"]
+        },
+        "bio": {
+          "type": "string",
+          "description": "Artist or gallerist biography",
+          "maxLength": 3000
+        },
+        "website": {
+          "type": "string",
+          "description": "Official website URL",
+          "maxLength": 300
+        },
+        "instagram": {
+          "type": "string",
+          "description": "Instagram or social media handle",
+          "maxLength": 100
+        },
+        "phone": {
+          "type": "string",
+          "description": "Contact phone number",
+          "maxLength": 50
+        },
+        "style": {
+          "type": "string",
+          "description": "Artistic style or gallery focus",
+          "maxLength": 200
+        },
+        "philosophy": {
+          "type": "string",
+          "description": "Artistic approach or mission statement",
+          "maxLength": 2000
+        },
+        "achievements": {
+          "type": "string",
+          "description": "Exhibitions, awards and publications",
+          "maxLength": 2000
+        },
+        "contactEmail": {
+          "type": "string",
+          "description": "Public or professional contact email address",
+          "maxLength": 200
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when account was created"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when profile was last updated"
+        }
+      },
+      "required": ["id", "email", "displayName", "role", "createdAt", "updatedAt"]
+    },
+    "Artwork": {
+      "title": "Artwork",
+      "description": "Art piece cataloged and synchronized across devices",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of the artwork"
+        },
+        "userId": {
+          "type": "string",
+          "description": "ID of the artist or gallerist owner"
+        },
+        "title": {
+          "type": "string",
+          "description": "Artwork title",
+          "maxLength": 250
+        },
+        "artist": {
+          "type": "string",
+          "description": "Artist name",
+          "maxLength": 150
+        },
+        "medium": {
+          "type": "string",
+          "description": "Technique and materials used",
+          "maxLength": 200
+        },
+        "year": {
+          "type": "string",
+          "description": "Year or period of creation",
+          "maxLength": 50
+        },
+        "dimensions": {
+          "type": "string",
+          "description": "Physical dimensions (e.g., 80x60 cm)",
+          "maxLength": 80
+        },
+        "estimatedPrice": {
+          "type": "string",
+          "description": "Estimated price or valuation",
+          "maxLength": 80
+        },
+        "thumbnailUrl": {
+          "type": "string",
+          "description": "Optimized thumbnail preview",
+          "maxLength": 80000
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last modification timestamp"
+        }
+      },
+      "required": ["id", "userId", "title", "artist", "createdAt", "updatedAt"]
+    },
+    "AnalysisHistory": {
+      "title": "AnalysisHistory",
+      "description": "Saved AI studio analyses and generated documents",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique ID of history record"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner user ID"
+        },
+        "toolId": {
+          "type": "string",
+          "description": "Identifier of the tool used",
+          "maxLength": 80
+        },
+        "toolLabel": {
+          "type": "string",
+          "description": "Display name of the tool",
+          "maxLength": 120
+        },
+        "filename": {
+          "type": "string",
+          "description": "Artwork reference or file name",
+          "maxLength": 200
+        },
+        "summary": {
+          "type": "string",
+          "description": "Short excerpt of the analysis",
+          "maxLength": 500
+        },
+        "result": {
+          "type": "string",
+          "description": "Full analysis report text",
+          "maxLength": 50000
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Record creation timestamp"
+        }
+      },
+      "required": ["id", "userId", "toolId", "toolLabel", "summary", "result", "createdAt"]
+    },
+    "GuestbookEntry": {
+      "title": "GuestbookEntry",
+      "description": "Exhibition guestbook message or visitor feedback",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique guestbook entry identifier"
+        },
+        "userId": {
+          "type": "string",
+          "description": "ID of artist hosting the exhibition"
+        },
+        "visitorName": {
+          "type": "string",
+          "description": "Name of the visitor or collector",
+          "maxLength": 100
+        },
+        "visitorEmail": {
+          "type": "string",
+          "description": "Contact email of the visitor",
+          "maxLength": 150
+        },
+        "message": {
+          "type": "string",
+          "description": "Message left by the visitor",
+          "maxLength": 2000
+        },
+        "artworkTitle": {
+          "type": "string",
+          "description": "Title of the artwork commented on",
+          "maxLength": 200
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of comment"
+        }
+      },
+      "required": ["id", "userId", "visitorName", "message", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "User profile document containing artist, gallerist or visitor settings"
+    },
+    "/users/{userId}/artworks/{artworkId}": {
+      "schema": {
+        "$ref": "#/entities/Artwork"
+      },
+      "description": "Cataloged artworks for the user"
+    },
+    "/users/{userId}/history/{historyId}": {
+      "schema": {
+        "$ref": "#/entities/AnalysisHistory"
+      },
+      "description": "Saved artwork analyses and expert critiques"
+    },
+    "/users/{userId}/guestbook/{guestbookId}": {
+      "schema": {
+        "$ref": "#/entities/GuestbookEntry"
+      },
+      "description": "Messages from exhibition visitors and collectors"
+    }
+  }
+}

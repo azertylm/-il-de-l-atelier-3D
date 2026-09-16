@@ -1,0 +1,120 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Health check ping collection for SDK initialization verification
+    match /test/{testId} {
+      allow get: if true;
+    }
+
+    // User Profile Validation
+    function isValidUserProfile(data, userId) {
+      return data.id == userId &&
+        data.email is string && data.email.size() <= 200 &&
+        data.displayName is string && data.displayName.size() <= 150 &&
+        data.role in ['artist', 'gallerist', 'visitor_collector'] &&
+        (!('bio' in data) || (data.bio is string && data.bio.size() <= 3000)) &&
+        (!('website' in data) || (data.website is string && data.website.size() <= 300)) &&
+        (!('instagram' in data) || (data.instagram is string && data.instagram.size() <= 100)) &&
+        (!('phone' in data) || (data.phone is string && data.phone.size() <= 50)) &&
+        (!('style' in data) || (data.style is string && data.style.size() <= 200)) &&
+        (!('philosophy' in data) || (data.philosophy is string && data.philosophy.size() <= 2000)) &&
+        (!('achievements' in data) || (data.achievements is string && data.achievements.size() <= 2000)) &&
+        (!('contactEmail' in data) || (data.contactEmail is string && data.contactEmail.size() <= 200)) &&
+        (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 100)) &&
+        (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 100));
+    }
+
+    // Artwork Validation
+    function isValidArtwork(data, userId) {
+      return data.userId == userId &&
+        data.title is string && data.title.size() <= 250 &&
+        data.artist is string && data.artist.size() <= 150 &&
+        (!('medium' in data) || (data.medium is string && data.medium.size() <= 200)) &&
+        (!('year' in data) || (data.year is string && data.year.size() <= 50)) &&
+        (!('dimensions' in data) || (data.dimensions is string && data.dimensions.size() <= 80)) &&
+        (!('estimatedPrice' in data) || (data.estimatedPrice is string && data.estimatedPrice.size() <= 80)) &&
+        (!('thumbnailUrl' in data) || (data.thumbnailUrl is string && data.thumbnailUrl.size() <= 80000)) &&
+        (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 100)) &&
+        (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 100));
+    }
+
+    // Analysis History Validation
+    function isValidAnalysisHistory(data, userId) {
+      return data.userId == userId &&
+        data.toolId is string && data.toolId.size() > 0 && data.toolId.size() <= 80 &&
+        data.toolLabel is string && data.toolLabel.size() > 0 && data.toolLabel.size() <= 120 &&
+        data.summary is string && data.summary.size() <= 500 &&
+        data.result is string && data.result.size() <= 50000 &&
+        (!('filename' in data) || (data.filename is string && data.filename.size() <= 200)) &&
+        (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 100));
+    }
+
+    // Guestbook Validation
+    function isValidGuestbook(data, userId) {
+      return data.userId == userId &&
+        data.visitorName is string && data.visitorName.size() > 0 && data.visitorName.size() <= 100 &&
+        data.message is string && data.message.size() > 0 && data.message.size() <= 2000 &&
+        (!('visitorEmail' in data) || (data.visitorEmail is string && data.visitorEmail.size() <= 150)) &&
+        (!('artworkTitle' in data) || (data.artworkTitle is string && data.artworkTitle.size() <= 200)) &&
+        (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 100));
+    }
+
+    // Collection: Users
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+      allow create: if isOwner(userId) && isValidId(userId) && isValidUserProfile(incoming(), userId);
+      allow update: if isOwner(userId) && isValidId(userId) && isValidUserProfile(incoming(), userId) && (!('id' in existing()) || incoming().id == existing().id);
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      // Subcollection: Artworks
+      match /artworks/{artworkId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(artworkId);
+        allow list: if isOwner(userId) && isValidId(userId);
+        allow create: if isOwner(userId) && isValidId(userId) && isValidId(artworkId) && isValidArtwork(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(userId) && isValidId(artworkId) && isValidArtwork(incoming(), userId) && (!('id' in existing()) || incoming().id == existing().id) && (!('userId' in existing()) || incoming().userId == existing().userId);
+        allow delete: if isOwner(userId) && isValidId(userId) && isValidId(artworkId);
+      }
+
+      // Subcollection: Analysis History
+      match /history/{historyId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(historyId);
+        allow list: if isOwner(userId) && isValidId(userId);
+        allow create: if isOwner(userId) && isValidId(userId) && isValidId(historyId) && isValidAnalysisHistory(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(userId) && isValidId(historyId) && isValidAnalysisHistory(incoming(), userId) && (!('id' in existing()) || incoming().id == existing().id) && (!('userId' in existing()) || incoming().userId == existing().userId);
+        allow delete: if isOwner(userId) && isValidId(userId) && isValidId(historyId);
+      }
+
+      // Subcollection: Guestbook
+      match /guestbook/{guestbookId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(guestbookId);
+        allow list: if isOwner(userId) && isValidId(userId);
+        allow create: if isValidId(userId) && isValidId(guestbookId) && isValidGuestbook(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(userId) && isValidId(guestbookId) && isValidGuestbook(incoming(), userId);
+        allow delete: if isOwner(userId) && isValidId(userId) && isValidId(guestbookId);
+      }
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": " L\u0027Œil de l\u0027Atelier 3D",
+  "description": "Un assistant d\u0027intelligence artificielle et d\u0027histoire de l\u0027art sur-mesure pour accompagner les artistes dans leur création, leur curation, leur communication et l\u0027analyse de leurs œuvres.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
