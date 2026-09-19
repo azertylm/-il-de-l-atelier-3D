@@ -32,33 +32,33 @@ export interface CartelDensityConfig {
 }
 
 export const CARTEL_DENSITIES: Record<CartelDensity, CartelDensityConfig> = {
-  // Ultra-compact: 5.2 cm x 3.5 cm = 21 cartels par page A4 (3 cols x 7 rows)
+  // Format 5 cm x 3 cm = 24 cartels par page A4 (3 cols x 8 rows) - Maximum d'optimisation
   compact: {
     id: "compact",
-    label: "Ultra-Dense (5,2 × 3,5 cm • 21/page)",
-    description: "Maximum de cartels par feuille A4 (7 rangées de 3 colonnes)",
-    cartelsPerPage: 21,
+    label: "Format 5 × 3 cm (24 cartels / page A4)",
+    description: "Format 5 cm sur 3 cm : optimise au maximum le nombre de cartels par feuille A4",
+    cartelsPerPage: 24,
     columns: 3,
-    rows: 7,
-    widthMm: 52,
-    heightMm: 35
+    rows: 8,
+    widthMm: 50,
+    heightMm: 30
   },
-  // Standard musée: 5.5 cm x 4.0 cm = 18 cartels par page A4 (3 cols x 6 rows)
+  // Format 5 cm x 4 cm = 18 cartels par page A4 (3 cols x 6 rows) - Standard équilibré
   standard: {
     id: "standard",
-    label: "Standard Musée (5,5 × 4,0 cm • 18/page)",
-    description: "Format équilibré pour peintures et photos (6 rangées de 3 colonnes)",
+    label: "Format 5 × 4 cm (18 cartels / page A4)",
+    description: "Format 5 cm sur 4 cm : standard musée recommandé pour peintures et photographies",
     cartelsPerPage: 18,
     columns: 3,
     rows: 6,
-    widthMm: 55,
+    widthMm: 50,
     heightMm: 40
   },
-  // Aéré: 6.0 cm x 4.5 cm = 12 cartels par page A4 (3 cols x 4 rows)
+  // Format aéré 6 cm x 4.5 cm = 12 cartels par page A4 (3 cols x 4 rows)
   spacious: {
     id: "spacious",
-    label: "Format Aéré (6,0 × 4,5 cm • 12/page)",
-    description: "Pour descriptions techniques détaillées (4 rangées de 3 colonnes)",
+    label: "Format 6 × 4,5 cm (12 cartels / page A4)",
+    description: "Format aéré pour cartels avec notices descriptives ou titres longs",
     cartelsPerPage: 12,
     columns: 3,
     rows: 4,
@@ -317,14 +317,14 @@ export function generateA4CartelsHtml(options: GenerateA4CartelsHtmlOptions): st
     /* Density Configurations */
     .sheet-grid.density-compact {
       grid-template-columns: repeat(3, 1fr);
-      grid-template-rows: repeat(7, 1fr);
-      gap: 3mm;
+      grid-template-rows: repeat(8, 1fr);
+      gap: 2.2mm;
     }
 
     .sheet-grid.density-standard {
       grid-template-columns: repeat(3, 1fr);
       grid-template-rows: repeat(6, 1fr);
-      gap: 3.8mm;
+      gap: 3.5mm;
     }
 
     .sheet-grid.density-spacious {

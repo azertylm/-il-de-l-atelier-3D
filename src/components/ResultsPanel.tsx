@@ -20,6 +20,10 @@ interface ResultsPanelProps {
   previewUrl?: string | null;
   onRerunCurrentTool?: () => void;
   onOpenGlobalReport?: () => void;
+  onSaveToLogbook?: () => void;
+  isSavedInLogbook?: boolean;
+  onOpenLogbook?: () => void;
+  logbookCount?: number;
 }
 
 export default function ResultsPanel({ 
@@ -30,7 +34,11 @@ export default function ResultsPanel({
   theme = "dark-gold",
   previewUrl,
   onRerunCurrentTool,
-  onOpenGlobalReport
+  onOpenGlobalReport,
+  onSaveToLogbook,
+  isSavedInLogbook,
+  onOpenLogbook,
+  logbookCount = 0
 }: ResultsPanelProps) {
   const [copied, setCopied] = useState<string | null>(null);
   
@@ -118,7 +126,7 @@ export default function ResultsPanel({
       {/* Top ambient gold line */}
       <div className="absolute top-0 left-0 right-0 h-[3px] bg-[#c9a84c]" />
 
-      {/* Actions Header (Relancer & Copier) */}
+      {/* Actions Header (Relancer, Dossier, Carnet & Copier) */}
       <div className={`flex flex-wrap items-center justify-between gap-2.5 mb-4 sm:mb-6 border-b pb-3 sm:pb-4 ${getBorderColor()}`}>
         <div className="flex items-center gap-2 flex-wrap">
           {onRerunCurrentTool && (
@@ -137,6 +145,47 @@ export default function ResultsPanel({
             </button>
           )}
 
+          {onSaveToLogbook && (
+            <button
+              type="button"
+              onClick={onSaveToLogbook}
+              className={`flex items-center gap-1.5 px-3 py-1 border text-[10px] tracking-wider uppercase rounded-none font-bold transition-all shadow-sm ${
+                isSavedInLogbook
+                  ? "bg-emerald-950/60 text-emerald-400 border-emerald-500/50 hover:bg-emerald-900/80"
+                  : "bg-[#c9a84c] text-black hover:bg-white border-[#c9a84c]"
+              }`}
+              title="Enregistrer manuellement cette fiche d'analyse dans votre Carnet de Bord"
+            >
+              {isSavedInLogbook ? (
+                <>
+                  <Check className="w-3 h-3" />
+                  <span>Enregistré au Carnet ✓</span>
+                </>
+              ) : (
+                <>
+                  <BookOpen className="w-3 h-3" />
+                  <span>Enregistrer dans le Carnet</span>
+                </>
+              )}
+            </button>
+          )}
+
+          {onOpenLogbook && (
+            <button
+              type="button"
+              onClick={onOpenLogbook}
+              className={`flex items-center gap-1.5 px-2.5 py-1 border text-[10px] tracking-wider uppercase rounded-none transition-all font-sans font-medium ${
+                theme === "dark-gold"
+                  ? "bg-black/60 text-neutral-300 border-white/10 hover:border-[#c9a84c]/50 hover:text-white"
+                  : "bg-white text-stone-700 border-stone-200 hover:border-[#c9a84c]/50 hover:text-stone-900"
+              }`}
+              title="Consulter l'ensemble de votre Carnet de Bord"
+            >
+              <Eye className="w-3 h-3 text-[#c9a84c]" />
+              <span>Mon Carnet ({logbookCount})</span>
+            </button>
+          )}
+
           {onOpenGlobalReport && (
             <button
               type="button"
@@ -145,7 +194,7 @@ export default function ResultsPanel({
               title="Exporter et télécharger le dossier des 16 recommandations en HTML autonome, format copier-coller ou partager"
             >
               <FileText className="w-3 h-3" />
-              <span>Dossier Global (.HTML / Copier / Partager)</span>
+              <span>Dossier Global (.HTML)</span>
             </button>
           )}
         </div>
@@ -1253,13 +1302,70 @@ export default function ResultsPanel({
         )}
       </div>
 
+      {/* Bottom Logbook & Export Action Bar */}
+      <div className={`mt-8 pt-4 border-t flex flex-wrap items-center justify-between gap-3 ${getBorderColor()}`}>
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {onSaveToLogbook && (
+            <button
+              type="button"
+              onClick={onSaveToLogbook}
+              className={`flex items-center gap-2 px-3.5 py-1.5 border text-xs tracking-wider uppercase rounded-none font-sans font-bold transition-all duration-200 shadow-sm ${
+                isSavedInLogbook
+                  ? "bg-emerald-950/40 text-emerald-400 border-emerald-500/40 hover:bg-emerald-900/60"
+                  : theme === "dark-gold"
+                    ? "bg-[#c9a84c] text-black hover:bg-white border-[#c9a84c]"
+                    : "bg-[#c9a84c] text-black hover:bg-stone-900 hover:text-white border-[#c9a84c]"
+              }`}
+            >
+              {isSavedInLogbook ? (
+                <>
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Enregistré dans le Carnet de Bord ✓</span>
+                </>
+              ) : (
+                <>
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span>Enregistrer dans le Carnet de Bord</span>
+                </>
+              )}
+            </button>
+          )}
+
+          {onOpenLogbook && (
+            <button
+              type="button"
+              onClick={onOpenLogbook}
+              className={`flex items-center gap-1.5 px-3 py-1.5 border text-xs tracking-wider uppercase rounded-none font-sans font-medium transition-all duration-200 ${
+                theme === "dark-gold"
+                  ? "bg-black/60 text-neutral-300 border-white/10 hover:border-[#c9a84c]/50 hover:text-white"
+                  : "bg-white text-stone-700 border-stone-200 hover:border-[#c9a84c]/60 hover:text-stone-900"
+              }`}
+            >
+              <Eye className="w-3.5 h-3.5 text-[#c9a84c]" />
+              <span>Consulter mon Carnet ({logbookCount})</span>
+            </button>
+          )}
+        </div>
+
+        {onOpenGlobalReport && (
+          <button
+            type="button"
+            onClick={onOpenGlobalReport}
+            className="text-[11px] font-mono uppercase tracking-wider text-[#c9a84c] hover:underline flex items-center gap-1.5 py-1"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>Ouvrir le Dossier Global Complet</span>
+          </button>
+        )}
+      </div>
+
       {/* Footer helper */}
       <div className={`mt-8 pt-4 border-t flex flex-col sm:flex-row items-center justify-between gap-3 ${getBorderColor()}`}>
         <span className="text-[9px] text-neutral-500 uppercase tracking-widest font-mono">
-          Analyseur OS v2.5 · Propulsé par Google Gemini
+          Expertise Visuelle d'Atelier · Propulsé par Intelligence Artificielle Pro
         </span>
         <span className="text-[10px] text-neutral-400 font-sans italic font-bold">
-          L'Œil de l'Atelier observe le monde sensible.
+          L'Œil de l'Atelier observe et analyse le geste sensible.
         </span>
       </div>
     </div>

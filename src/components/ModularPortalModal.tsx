@@ -12,7 +12,6 @@ export interface ModularPortalModalProps {
   currentAppMode?: "curator" | "visitor";
   currentMode?: "curator" | "visitor";
   onSwitchMode: (mode: "curator" | "visitor") => void;
-  onOpenGallery3D?: () => void;
 }
 
 export default function ModularPortalModal({
@@ -21,12 +20,11 @@ export default function ModularPortalModal({
   theme = "dark-gold",
   currentAppMode = "curator",
   currentMode,
-  onSwitchMode,
-  onOpenGallery3D
+  onSwitchMode
 }: ModularPortalModalProps) {
   const effectiveMode = currentMode || currentAppMode;
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const [embedMode, setEmbedMode] = useState<"kiosk3d" | "curator" | "circuit">("kiosk3d");
+  const [embedMode, setEmbedMode] = useState<"kiosk" | "curator" | "circuit">("kiosk");
   const [showQrNotice, setShowQrNotice] = useState<boolean>(true);
 
   if (!isOpen) return null;
@@ -39,19 +37,16 @@ export default function ModularPortalModal({
   width="100%" 
   height="750px" 
   frameborder="0" 
-  allow="fullscreen; accelerometer" 
+  allow="fullscreen" 
   style="border: 1px solid rgba(201,168,76,0.3); background: #050505; border-radius: 4px;"
-  title="L'Œil de l'Atelier - Galerie 3D & Curation">
+  title="L'Œil de l'Atelier - Curation & Vernissage">
 </iframe>`;
 
-  const postMessageSnippet = `// Piloter la Galerie 3D depuis votre site parent via postMessage :
+  const postMessageSnippet = `// Piloter l'exposition depuis votre site parent via postMessage :
 const iframe = document.querySelector('iframe');
 
 // Naviguer vers l'œuvre suivante
 iframe.contentWindow.postMessage({ type: 'OEIL_ATELIER_NAVIGATE', direction: 'next' }, '*');
-
-// Changer le mode d'éclairage 3D (ex: noir absolu pour light painting)
-iframe.contentWindow.postMessage({ type: 'OEIL_ATELIER_LIGHTING', ambient: 0.05 }, '*');
 
 // Écouter les interactions du visiteur
 window.addEventListener('message', (event) => {
@@ -139,7 +134,7 @@ window.addEventListener('message', (event) => {
                   {currentAppMode === "visitor" && <Check className="w-4 h-4 text-[#c9a84c]" />}
                 </div>
                 <p className="text-xs text-neutral-400 font-sans leading-relaxed">
-                  Destiné à être projeté sur grand écran ou borne tactile lors du vernissage. Affiche la <strong>Galerie 3D immersive</strong>, les cartels artistiques interactifs et le parcours urbain géolocalisé. Tout le panneau de gestion est masqué.
+                  Destiné à être projeté sur grand écran ou borne tactile lors du vernissage. Affiche l'<strong>exposition numérique</strong>, les cartels artistiques interactifs et le parcours urbain géolocalisé. Tout le panneau de gestion est masqué.
                 </p>
               </div>
 
@@ -183,12 +178,12 @@ window.addEventListener('message', (event) => {
               <div className="flex items-center gap-1.5 p-1 bg-black border border-white/10 text-xs font-mono">
                 <button
                   type="button"
-                  onClick={() => setEmbedMode("kiosk3d")}
+                  onClick={() => setEmbedMode("kiosk")}
                   className={`px-2.5 py-1 transition-all cursor-pointer ${
-                    embedMode === "kiosk3d" ? "bg-[#c9a84c] text-black font-bold" : "text-neutral-400 hover:text-white"
+                    embedMode === "kiosk" ? "bg-[#c9a84c] text-black font-bold" : "text-neutral-400 hover:text-white"
                   }`}
                 >
-                  Galerie 3D Seule
+                  Kiosque Exposition
                 </button>
                 <button
                   type="button"

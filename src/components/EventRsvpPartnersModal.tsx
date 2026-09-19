@@ -4,7 +4,7 @@ import {
   Plus, Search, Download, Printer, Phone, Mail, 
   MapPin, DollarSign, Calendar, Sparkles, Filter, 
   Trash2, Edit, Check, AlertCircle, X, GlassWater,
-  ChefHat, Coffee, Store, ShieldCheck
+  ChefHat, Coffee, Store, ShieldCheck, ChevronDown, ChevronUp
 } from "lucide-react";
 
 export interface GuestItem {
@@ -43,7 +43,6 @@ export interface EventRsvpPartnersModalProps {
   expoVenue?: string;
   artistName?: string;
   artworksCount?: number;
-  onOpenGallery3D?: () => void;
 }
 
 const INITIAL_GUESTS: GuestItem[] = [
@@ -172,8 +171,7 @@ export default function EventRsvpPartnersModal({
   expoDate = "Jeudi 15 Octobre 2026 · 18h30",
   expoVenue = "Galerie de l'Atelier, Paris 3e",
   artistName,
-  artworksCount,
-  onOpenGallery3D
+  artworksCount
 }: EventRsvpPartnersModalProps) {
   const [activeTab, setActiveTab] = useState<"rsvp" | "partners" | "calculator">("rsvp");
   
@@ -242,6 +240,7 @@ export default function EventRsvpPartnersModal({
 
   const totalPartnersBudget = partners.reduce((acc, p) => acc + p.budgetEstimated, 0);
   const costPerGuest = confirmedCount > 0 ? (totalPartnersBudget / confirmedCount).toFixed(1) : "0";
+  const [isMetricsExpanded, setIsMetricsExpanded] = useState<boolean>(false);
 
   // Filtered Guests
   const filteredGuests = guests.filter(g => {
@@ -365,20 +364,20 @@ export default function EventRsvpPartnersModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-fadeIn">
-      <div className="w-full max-w-5xl max-h-[92vh] flex flex-col bg-[#0d0d0f] border border-[#c9a84c]/60 shadow-2xl text-[#E0E0E0] overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-1.5 sm:p-4 md:p-6 bg-black/85 backdrop-blur-md animate-fadeIn">
+      <div className="w-full max-w-5xl h-[95vh] sm:h-auto sm:max-h-[92vh] flex flex-col bg-[#0d0d0f] border border-[#c9a84c]/60 shadow-2xl text-[#E0E0E0] overflow-hidden">
         
         {/* Header */}
-        <div className="p-4 sm:p-6 border-b border-white/10 flex items-start justify-between gap-4 bg-gradient-to-r from-black via-neutral-950 to-[#12100a]">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-none bg-[#c9a84c]/20 border border-[#c9a84c] flex items-center justify-center text-[#c9a84c] shrink-0">
-              <Users className="w-5 h-5" />
+        <div className="p-3 sm:p-5 border-b border-white/10 flex items-center justify-between gap-3 bg-gradient-to-r from-black via-neutral-950 to-[#12100a] shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-none bg-[#c9a84c]/20 border border-[#c9a84c] flex items-center justify-center text-[#c9a84c] shrink-0">
+              <Users className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <span className="text-[10px] font-mono tracking-widest uppercase text-[#c9a84c] block">
+            <div className="min-w-0">
+              <span className="text-[9px] sm:text-[10px] font-mono tracking-widest uppercase text-[#c9a84c] block truncate">
                 Gestion des Événements & Logistique de Vernissage
               </span>
-              <h3 className="font-serif text-xl sm:text-2xl font-light text-white tracking-wide">
+              <h3 className="font-serif text-sm sm:text-xl md:text-2xl font-light text-white tracking-wide truncate">
                 Invités, RSVP & Partenaires Locaux du Buffet
               </h3>
             </div>
@@ -387,87 +386,119 @@ export default function EventRsvpPartnersModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
+            className="p-1.5 sm:p-2 text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer shrink-0"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </div>
 
-        {/* Top Metric Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-4 sm:p-5 bg-black/50 border-b border-white/10 text-xs font-mono">
-          <div className="p-3 bg-neutral-900/80 border border-white/10">
-            <span className="text-neutral-400 block text-[10px] uppercase tracking-wider">Convives Confirmés :</span>
-            <span className="text-xl font-bold text-emerald-400 mt-1 block">
+        {/* Mobile Compact KPI Strip (< sm) */}
+        <div className="sm:hidden flex items-center justify-between px-3 py-2 bg-black/70 border-b border-white/10 text-[11px] font-mono shrink-0">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar text-[11px] py-0.5">
+            <span className="text-emerald-400 font-bold whitespace-nowrap">
+              ✓ {confirmedCount} conf.
+            </span>
+            <span className="text-neutral-600">•</span>
+            <span className="text-amber-400 whitespace-nowrap">
+              ⏳ {pendingCount} rsvp
+            </span>
+            <span className="text-neutral-600">•</span>
+            <span className="text-[#c9a84c] whitespace-nowrap">
+              🍽️ {partners.length} part.
+            </span>
+            <span className="text-neutral-600">•</span>
+            <span className="text-white font-bold whitespace-nowrap">
+              {totalPartnersBudget} €
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsMetricsExpanded(!isMetricsExpanded)}
+            className="ml-2 px-2 py-1 bg-neutral-800/80 hover:bg-neutral-700 text-[10px] text-[#c9a84c] uppercase font-bold shrink-0 flex items-center gap-1 border border-white/15 cursor-pointer"
+          >
+            {isMetricsExpanded ? (
+              <>Moins <ChevronUp className="w-3 h-3" /></>
+            ) : (
+              <>Détails <ChevronDown className="w-3 h-3" /></>
+            )}
+          </button>
+        </div>
+
+        {/* Top Metric Cards (Hidden on mobile when collapsed, 4 columns on sm+) */}
+        <div className={`${isMetricsExpanded ? "grid" : "hidden sm:grid"} grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5 p-2.5 sm:p-4 bg-black/50 border-b border-white/10 text-xs font-mono shrink-0`}>
+          <div className="p-2.5 sm:p-3 bg-neutral-900/80 border border-white/10">
+            <span className="text-neutral-400 block text-[9px] sm:text-[10px] uppercase tracking-wider">Convives Confirmés :</span>
+            <span className="text-base sm:text-xl font-bold text-emerald-400 mt-0.5 block">
               {confirmedCount} <span className="text-xs text-neutral-400 font-normal">personnes</span>
             </span>
           </div>
 
-          <div className="p-3 bg-neutral-900/80 border border-white/10">
-            <span className="text-neutral-400 block text-[10px] uppercase tracking-wider">En Attente RSVP :</span>
-            <span className="text-xl font-bold text-amber-400 mt-1 block">
+          <div className="p-2.5 sm:p-3 bg-neutral-900/80 border border-white/10">
+            <span className="text-neutral-400 block text-[9px] sm:text-[10px] uppercase tracking-wider">En Attente RSVP :</span>
+            <span className="text-base sm:text-xl font-bold text-amber-400 mt-0.5 block">
               {pendingCount} <span className="text-xs text-neutral-400 font-normal">invitations</span>
             </span>
           </div>
 
-          <div className="p-3 bg-neutral-900/80 border border-white/10">
-            <span className="text-neutral-400 block text-[10px] uppercase tracking-wider">Partenaires Buffet :</span>
-            <span className="text-xl font-bold text-[#c9a84c] mt-1 block">
-              {partners.length} <span className="text-xs text-neutral-400 font-normal">commerces locaux</span>
+          <div className="p-2.5 sm:p-3 bg-neutral-900/80 border border-white/10">
+            <span className="text-neutral-400 block text-[9px] sm:text-[10px] uppercase tracking-wider">Partenaires Buffet :</span>
+            <span className="text-base sm:text-xl font-bold text-[#c9a84c] mt-0.5 block">
+              {partners.length} <span className="text-xs text-neutral-400 font-normal">commerces</span>
             </span>
           </div>
 
-          <div className="p-3 bg-neutral-900/80 border border-white/10">
-            <span className="text-neutral-400 block text-[10px] uppercase tracking-wider">Budget Traiteur Total :</span>
-            <span className="text-xl font-bold text-white mt-1 block">
+          <div className="p-2.5 sm:p-3 bg-neutral-900/80 border border-white/10">
+            <span className="text-neutral-400 block text-[9px] sm:text-[10px] uppercase tracking-wider">Budget Traiteur :</span>
+            <span className="text-base sm:text-xl font-bold text-white mt-0.5 block">
               {totalPartnersBudget} € <span className="text-[10px] text-neutral-400 font-normal">({costPerGuest} € / tête)</span>
             </span>
           </div>
         </div>
 
-        {/* Navigation Tabs */}
-        <div className="flex border-b border-white/10 bg-neutral-950 px-4">
+        {/* Navigation Tabs (Single line with horizontal scrolling on mobile) */}
+        <div className="flex overflow-x-auto no-scrollbar border-b border-white/10 bg-neutral-950 px-2 sm:px-4 shrink-0 whitespace-nowrap">
           <button
             type="button"
             onClick={() => setActiveTab("rsvp")}
-            className={`px-4 py-3 text-xs font-mono font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+            className={`px-3 py-2.5 sm:px-4 sm:py-3 text-[11px] sm:text-xs font-mono font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
               activeTab === "rsvp"
                 ? "border-[#c9a84c] text-[#c9a84c] bg-white/5"
                 : "border-transparent text-neutral-400 hover:text-white"
             }`}
           >
-            <Users className="w-4 h-4" />
+            <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             <span>Invités & RSVP ({guests.length})</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab("partners")}
-            className={`px-4 py-3 text-xs font-mono font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+            className={`px-3 py-2.5 sm:px-4 sm:py-3 text-[11px] sm:text-xs font-mono font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
               activeTab === "partners"
                 ? "border-[#c9a84c] text-[#c9a84c] bg-white/5"
                 : "border-transparent text-neutral-400 hover:text-white"
             }`}
           >
-            <Utensils className="w-4 h-4" />
+            <Utensils className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             <span>Partenaires Locaux & Buffet ({partners.length})</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab("calculator")}
-            className={`px-4 py-3 text-xs font-mono font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+            className={`px-3 py-2.5 sm:px-4 sm:py-3 text-[11px] sm:text-xs font-mono font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
               activeTab === "calculator"
                 ? "border-[#c9a84c] text-[#c9a84c] bg-white/5"
                 : "border-transparent text-neutral-400 hover:text-white"
             }`}
           >
-            <GlassWater className="w-4 h-4" />
-            <span>Calculateur de Boissons & Pièces Cocktail</span>
+            <GlassWater className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span>Calculateur Boissons & Pièces</span>
           </button>
         </div>
 
-        {/* Tab Content */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar">
+        {/* Tab Content (min-h-0 allows flex child to shrink and scroll properly) */}
+        <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-6 custom-scrollbar">
           
           {/* TAB 1: RSVP & GUESTS LIST */}
           {activeTab === "rsvp" && (
@@ -710,23 +741,23 @@ export default function EventRsvpPartnersModal({
 
           {/* TAB 2: PARTENAIRES COMMERCES LOCAUX & BUFFET */}
           {activeTab === "partners" && (
-            <div className="space-y-5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-neutral-950 p-4 border border-[#c9a84c]/30">
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-neutral-950 p-3 sm:p-4 border border-[#c9a84c]/30">
                 <div>
-                  <h4 className="text-sm font-serif font-bold text-white uppercase tracking-wider">
+                  <h4 className="text-xs sm:text-sm font-serif font-bold text-white uppercase tracking-wider">
                     Commerces Locaux, Traiteurs & Partenaires Buffet
                   </h4>
-                  <p className="text-xs text-neutral-400 font-sans mt-0.5">
+                  <p className="text-[11px] sm:text-xs text-neutral-400 font-sans mt-0.5">
                     Centralisez les menus, contacts directs et devis des commerces de votre quartier pour valoriser l'ancrage local de votre vernissage.
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setIsAddPartnerOpen(!isAddPartnerOpen)}
-                  className="px-4 py-2 bg-[#c9a84c] text-black font-mono font-bold text-xs uppercase hover:bg-white transition-all flex items-center gap-1.5 cursor-pointer shrink-0 shadow-md"
+                  className="px-3 py-1.5 sm:px-4 sm:py-2 bg-[#c9a84c] text-black font-mono font-bold text-[11px] sm:text-xs uppercase hover:bg-white transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 shadow-md"
                 >
-                  <Plus className="w-4 h-4" />
-                  <span>Ajouter un Partenaire Local</span>
+                  <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <span>Ajouter un Partenaire</span>
                 </button>
               </div>
 
@@ -992,14 +1023,14 @@ export default function EventRsvpPartnersModal({
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-white/10 bg-black flex items-center justify-between text-xs font-mono">
-          <span className="text-neutral-400">
-            {confirmedCount} convives confirmés · {partners.length} partenaires locaux
+        <div className="p-2.5 sm:p-4 border-t border-white/10 bg-black flex items-center justify-between text-[10px] sm:text-xs font-mono shrink-0">
+          <span className="text-neutral-400 truncate mr-2">
+            {confirmedCount} convives · {partners.length} partenaires
           </span>
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 bg-neutral-800 text-white hover:bg-[#c9a84c] hover:text-black transition-colors font-bold uppercase cursor-pointer"
+            className="px-3 py-1.5 sm:px-4 sm:py-2 bg-neutral-800 text-white hover:bg-[#c9a84c] hover:text-black transition-colors font-bold uppercase cursor-pointer text-xs shrink-0"
           >
             Fermer le module
           </button>

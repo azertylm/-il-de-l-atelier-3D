@@ -26,7 +26,6 @@ export interface UrbanArtCircuitModalProps {
   venueName?: string;
   venueAddress?: string;
   artistName?: string;
-  onOpenGallery3D?: () => void;
 }
 
 const DEFAULT_WAYPOINTS: CircuitWaypoint[] = [
@@ -103,8 +102,7 @@ export default function UrbanArtCircuitModal({
   theme = "dark-gold",
   venueName = "Galerie de l'Atelier",
   venueAddress = "24 rue de Turenne, Paris 3e",
-  artistName,
-  onOpenGallery3D
+  artistName
 }: UrbanArtCircuitModalProps) {
   const [waypoints, setWaypoints] = useState<CircuitWaypoint[]>(DEFAULT_WAYPOINTS);
   const [selectedWaypointId, setSelectedWaypointId] = useState<string>("wp_1");

@@ -19,7 +19,6 @@ interface VernissageEventModalProps {
   onAnalyzeVernissageTool?: (toolId: string) => Promise<any>;
   onOpenRsvpPartners?: () => void;
   onOpenUrbanCircuit?: () => void;
-  onOpenGallery3D?: () => void;
 }
 
 export default function VernissageEventModal({
@@ -31,8 +30,7 @@ export default function VernissageEventModal({
   activeSeries = [],
   onAnalyzeVernissageTool,
   onOpenRsvpPartners,
-  onOpenUrbanCircuit,
-  onOpenGallery3D
+  onOpenUrbanCircuit
 }: VernissageEventModalProps) {
   const [activeTab, setActiveTab] = useState<"qrcode" | "invitations" | "livredor" | "logistique" | "scenographie">("qrcode");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -259,21 +257,6 @@ export default function VernissageEventModal({
           </div>
 
           <div className="flex items-center gap-2">
-            {onOpenGallery3D && (
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onOpenGallery3D();
-                }}
-                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-black border border-[#c9a84c] text-[#c9a84c] text-xs font-mono font-bold uppercase hover:bg-[#c9a84c] hover:text-black transition-colors cursor-pointer"
-                title="Lancer la Galerie 3D Immersive avec mode contraste et lumière rasante"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Galerie 3D</span>
-              </button>
-            )}
-
             {onOpenRsvpPartners && (
               <button
                 type="button"

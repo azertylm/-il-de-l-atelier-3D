@@ -847,9 +847,9 @@ export default function QrSalesCartelModal({
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/85 backdrop-blur-md animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-1 sm:p-4 md:p-6 bg-black/85 backdrop-blur-md animate-fadeIn">
       <div 
-        className={`w-full max-w-6xl max-h-[94vh] flex flex-col border shadow-2xl rounded-none overflow-hidden transition-colors ${
+        className={`w-full max-w-6xl h-[95vh] sm:h-auto sm:max-h-[94vh] flex flex-col border shadow-2xl rounded-none overflow-hidden transition-colors ${
           isDark ? "bg-[#0b0b0b] border-[#c9a84c] text-white" : "bg-white border-stone-300 text-stone-900"
         }`}
       >
@@ -1010,7 +1010,7 @@ export default function QrSalesCartelModal({
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+        <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-6 space-y-6 custom-scrollbar">
 
           {/* TAB 1: GÉNÉRATEUR DE CARTEL & QR CODE DE VENTE */}
           {activeTab === "generator" && (

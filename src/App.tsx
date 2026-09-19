@@ -8,7 +8,8 @@ import {
   Sparkles, BookOpen, Trash2, ArrowLeft, Paintbrush, HelpCircle, 
   AlertTriangle, Plus, FolderPlus, Heart, Check, X, Calendar, Eye, 
   Layers, FileText, RefreshCw, Loader2, Crown, Lock, User, Images,
-  QrCode, Tag, Globe, Share2, Cloud, Box, UtensilsCrossed, Compass, Maximize, Monitor, Wine
+  QrCode, Tag, Globe, Share2, Cloud, UtensilsCrossed, Compass, Maximize, Monitor, Wine,
+  Palette, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { ArtistProfile, HistoryItem, CustomArtwork, UserAccount, UserRole } from "./types.js";
 import { TOOLS } from "./data.js";
@@ -36,10 +37,20 @@ import ShareModal, { ShareRole } from "./components/ShareModal.js";
 import TopExplanationTab from "./components/TopExplanationTab.js";
 import ExplanationSection from "./components/ExplanationSection.js";
 import UserAccountModal from "./components/UserAccountModal.js";
-import Gallery3DViewer, { GalleryArtwork } from "./components/Gallery3DViewer.js";
 import EventRsvpPartnersModal from "./components/EventRsvpPartnersModal.js";
 import UrbanArtCircuitModal from "./components/UrbanArtCircuitModal.js";
 import ModularPortalModal from "./components/ModularPortalModal.js";
+
+export interface ExhibitionArtwork {
+  id: string;
+  title: string;
+  artist?: string;
+  medium?: string;
+  year?: string;
+  imageSrc: string;
+  description?: string;
+  price?: string;
+}
 import { onAuthStateChanged } from "firebase/auth";
 import { 
   auth, 
@@ -49,7 +60,8 @@ import {
   saveCloudArtwork, 
   deleteCloudArtwork, 
   fetchCloudHistory, 
-  saveCloudHistoryItem 
+  saveCloudHistoryItem,
+  deleteCloudHistoryItem
 } from "./lib/firebase.js";
 
 const DEFAULT_PROFILE: ArtistProfile = {
@@ -65,42 +77,119 @@ const DEFAULT_PROFILE: ArtistProfile = {
   philosophy: ""
 };
 
-// Helper: Resize and compress image base64 for history to stay within localStorage quota
-function resizeImageBase64(base64: string, maxWidth: number = 300, maxHeight: number = 300): Promise<string> {
+// Helper: Resize and compress image base64 for history to stay safely within localStorage quota
+function resizeImageBase64(base64: string, maxWidth: number = 140, maxHeight: number = 140, quality: number = 0.5): Promise<string> {
   return new Promise((resolve) => {
-    const img = new Image();
-    img.src = base64;
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      let width = img.width;
-      let height = img.height;
+    if (!base64 || typeof base64 !== "string") {
+      resolve("");
+      return;
+    }
+    if (base64.startsWith("data:image/svg+xml")) {
+      resolve(base64.length < 30000 ? base64 : "");
+      return;
+    }
 
-      if (width > height) {
-        if (width > maxWidth) {
-          height = Math.round((height * maxWidth) / width);
-          width = maxWidth;
-        }
-      } else {
-        if (height > maxHeight) {
-          width = Math.round((width * maxHeight) / height);
-          height = maxHeight;
-        }
-      }
+    try {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      let resolved = false;
 
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/jpeg", 0.75));
-      } else {
-        resolve(base64);
-      }
-    };
-    img.onerror = () => {
-      resolve(base64);
-    };
+      const finish = (result: string) => {
+        if (!resolved) {
+          resolved = true;
+          resolve(result);
+        }
+      };
+
+      const timer = setTimeout(() => {
+        finish(base64.startsWith("data:") && base64.length < 30000 ? base64 : "");
+      }, 1200);
+
+      img.onload = () => {
+        clearTimeout(timer);
+        try {
+          const canvas = document.createElement("canvas");
+          let width = img.naturalWidth || img.width || 100;
+          let height = img.naturalHeight || img.height || 100;
+
+          if (width > height) {
+            if (width > maxWidth) {
+              height = Math.max(1, Math.round((height * maxWidth) / width));
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = Math.max(1, Math.round((width * maxHeight) / height));
+              height = maxHeight;
+            }
+          }
+
+          canvas.width = Math.max(1, width);
+          canvas.height = Math.max(1, height);
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            finish(canvas.toDataURL("image/jpeg", quality));
+          } else {
+            finish("");
+          }
+        } catch (e) {
+          console.warn("Canvas resize exception:", e);
+          finish(base64.startsWith("data:") && base64.length < 30000 ? base64 : "");
+        }
+      };
+
+      img.onerror = () => {
+        clearTimeout(timer);
+        finish("");
+      };
+
+      img.src = base64;
+    } catch (err) {
+      console.warn("resizeImageBase64 error:", err);
+      resolve("");
+    }
   });
+}
+
+// Storage Helper: Safely save history items without throwing QuotaExceededError and never wiping in-memory state
+function safeSaveHistoryToLocalStorage(history: HistoryItem[]): void {
+  try {
+    localStorage.setItem("oeilAtelier_history", JSON.stringify(history));
+  } catch (e) {
+    console.warn("Storage quota reached for full history. Saving lightweight version...");
+    try {
+      // Step 1: Strip imageSrc from older items (keep only for 2 newest)
+      const lightweight = history.map((item, idx) => ({
+        ...item,
+        imageSrc: idx < 2 ? (item.imageSrc && item.imageSrc.length < 25000 ? item.imageSrc : "") : ""
+      }));
+      localStorage.setItem("oeilAtelier_history", JSON.stringify(lightweight));
+    } catch (e2) {
+      console.warn("Storage quota still tight. Saving text-only history...");
+      try {
+        // Step 2: Strip all images from history, keep text
+        const textOnly = history.slice(0, 30).map((item) => ({ ...item, imageSrc: "" }));
+        localStorage.setItem("oeilAtelier_history", JSON.stringify(textOnly));
+      } catch (e3) {
+        console.error("Could not write history to localStorage:", e3);
+      }
+    }
+  }
+}
+
+// Storage Helper: Safely save custom artworks
+function safeSaveCustomArtworksToLocalStorage(artworks: CustomArtwork[]): void {
+  try {
+    localStorage.setItem("oeilAtelier_custom_artworks", JSON.stringify(artworks));
+  } catch (e) {
+    console.warn("Storage quota reached for artworks. Saving compressed thumbnails...");
+    try {
+      localStorage.setItem("oeilAtelier_custom_artworks", JSON.stringify(artworks.slice(0, 25)));
+    } catch (e2) {
+      console.error("Could not write custom artworks to localStorage:", e2);
+    }
+  }
 }
 
 // Helper: Convert File to Base64 Promise
@@ -164,6 +253,7 @@ export default function App() {
   const [customApiKey, setCustomApiKey] = useState<string>("");
   const [historyList, setHistoryList] = useState<HistoryItem[]>([]);
   const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
+  const [logbookNotification, setLogbookNotification] = useState<{ message: string; visible: boolean } | null>(null);
   const [isDonationOpen, setIsDonationOpen] = useState<boolean>(false);
   
   // Subscription & Pro States (3 € / mois ou 20 € / an)
@@ -191,15 +281,13 @@ export default function App() {
   const [isAccountModalOpen, setIsAccountModalOpen] = useState<boolean>(false);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
-  // 3D Immersive Gallery & Vernissage Innovations
+  // Navigation & Vernissage Innovations
   const [activeMainTab, setActiveMainTab] = useState<"atelier" | "events">("atelier");
   const [appExperienceMode, setAppExperienceMode] = useState<"curator" | "visitor">("curator");
-  const [isGallery3DOpen, setIsGallery3DOpen] = useState<boolean>(false);
-  const [isKioskMode, setIsKioskMode] = useState<boolean>(false);
   const [isEventRsvpPartnersOpen, setIsEventRsvpPartnersOpen] = useState<boolean>(false);
   const [isUrbanCircuitOpen, setIsUrbanCircuitOpen] = useState<boolean>(false);
   const [isModularPortalOpen, setIsModularPortalOpen] = useState<boolean>(false);
-  const [active3DIndex, setActive3DIndex] = useState<number>(0);
+  const [activeKioskIndex, setActiveKioskIndex] = useState<number>(0);
 
   // Gallery States
   const [customArtworks, setCustomArtworks] = useState<CustomArtwork[]>([]);
@@ -267,9 +355,8 @@ export default function App() {
 
       if (view === "bridge" || roleParam === "galeriste") {
         setIsGalleryBridgeOpen(true);
-      } else if (mode === "kiosk3d" || view === "3d" || mode === "3d") {
+      } else if (mode === "kiosk" || mode === "kiosk3d" || view === "kiosk" || mode === "visitor") {
         setAppExperienceMode("visitor");
-        setIsGallery3DOpen(true);
       } else if (view === "circuit" || view === "map") {
         setIsUrbanCircuitOpen(true);
       } else if (view === "rsvp" || view === "partners") {
@@ -292,8 +379,8 @@ export default function App() {
     }
   }, []);
 
-  // Compute artworks list for the 3D Gallery Viewer
-  const getGallery3DArtworks = (): GalleryArtwork[] => {
+  // Compute artworks list for the Exhibition Kiosk & Events
+  const getExhibitionArtworks = (): ExhibitionArtwork[] => {
     // 1. From activeSeries if populated
     if (activeSeries.length > 0) {
       return activeSeries.map(s => ({
@@ -303,7 +390,7 @@ export default function App() {
         medium: s.medium || "Technique Mixte",
         year: s.year || "2026",
         imageSrc: s.imageSrc,
-        description: `Œuvre de la série contemporaine ${s.title}, mise en lumière dans la galerie 3D.`
+        description: `Œuvre de la série contemporaine ${s.title}, mise en valeur dans l'exposition de l'Atelier.`
       }));
     }
 
@@ -330,7 +417,7 @@ export default function App() {
         medium: selectedArtwork?.medium || saveMedium || profile.style || "Light Painting / Technique Mixte",
         year: selectedArtwork?.year || saveYear || "2026",
         imageSrc: imageBase64 || previewUrl || "",
-        description: "Œuvre en cours d'analyse et d'exposition dans l'espace tridimensionnel."
+        description: "Œuvre originale en cours d'analyse et d'exposition."
       }];
     }
 
@@ -408,7 +495,7 @@ export default function App() {
               const existingIds = new Set(prev.map(h => h.id));
               const additions = cloudHistory.filter(h => !existingIds.has(h.id));
               const merged = [...prev, ...additions];
-              localStorage.setItem("oeilAtelier_history", JSON.stringify(merged));
+              safeSaveHistoryToLocalStorage(merged);
               return merged;
             });
           }
@@ -474,13 +561,13 @@ export default function App() {
       const cloudArtworks = await fetchCloudArtworks(currentUser.uid);
       if (cloudArtworks) {
         setCustomArtworks(cloudArtworks);
-        localStorage.setItem("oeilAtelier_custom_artworks", JSON.stringify(cloudArtworks));
+        safeSaveCustomArtworksToLocalStorage(cloudArtworks);
       }
 
       const cloudHistory = await fetchCloudHistory(currentUser.uid);
       if (cloudHistory) {
         setHistoryList(cloudHistory);
-        localStorage.setItem("oeilAtelier_history", JSON.stringify(cloudHistory));
+        safeSaveHistoryToLocalStorage(cloudHistory);
       }
     } finally {
       setIsSyncing(false);
@@ -906,7 +993,7 @@ export default function App() {
 
       const updated = [newArtwork, ...customArtworks];
       setCustomArtworks(updated);
-      localStorage.setItem("oeilAtelier_custom_artworks", JSON.stringify(updated));
+      safeSaveCustomArtworksToLocalStorage(updated);
 
       // Synchronize to cloud if authenticated
       if (currentUser) {
@@ -995,15 +1082,20 @@ export default function App() {
         summaryText = `[Série de ${activeSeries.length} œuvres] ${summaryText}`;
       }
 
-      // 3. Save to Local History Logs
+      // 3. Save to Local History Logs (Carnet de Bord)
       const activeTool = TOOLS.find((t) => t.id === toolIdToRun);
       
-      let compressedImage = imageBase64;
-      try {
-        compressedImage = await resizeImageBase64(imageBase64, 300, 300);
-      } catch (resizeErr) {
-        console.warn("Failed to compress image for history:", resizeErr);
+      let compressedImage = "";
+      if (imageBase64) {
+        try {
+          compressedImage = await resizeImageBase64(imageBase64, 120, 120, 0.5);
+        } catch (resizeErr) {
+          console.warn("Failed to compress image for history:", resizeErr);
+          compressedImage = "";
+        }
       }
+
+      const artworkName = (selectedArtwork && selectedArtwork.title) || (file ? file.name : (activeSeries.length > 0 ? activeSeries[0].title : "Œuvre d'Atelier"));
 
       const newHistoryItem: HistoryItem = {
         id: Date.now(),
@@ -1013,7 +1105,7 @@ export default function App() {
           hour: "2-digit",
           minute: "2-digit"
         }),
-        filename: activeSeries.length > 1 ? `Série de ${activeSeries.length} œuvres` : (file ? file.name : "oeuvre_atelier.jpg"),
+        filename: activeSeries.length > 1 ? `Série de ${activeSeries.length} œuvres` : artworkName,
         toolId: toolIdToRun,
         toolLabel: activeTool?.label || "Outil",
         summary: summaryText,
@@ -1021,58 +1113,24 @@ export default function App() {
         imageSrc: compressedImage
       };
 
-      const updatedHistory = [newHistoryItem, ...historyList].slice(0, 50); // limit to 50 items
-      setHistoryList(updatedHistory);
-      
+      setHistoryList((prev) => {
+        const updatedHistory = [newHistoryItem, ...prev].slice(0, 50);
+        safeSaveHistoryToLocalStorage(updatedHistory);
+        return updatedHistory;
+      });
+
       // Synchronize to cloud if user is authenticated
       if (currentUser) {
         saveCloudHistoryItem(currentUser.uid, newHistoryItem).catch(console.error);
       }
-      
-      // Save safely to prevent localStorage QuotaExceededError
-      try {
-        localStorage.setItem("oeilAtelier_history", JSON.stringify(updatedHistory));
-      } catch (storageError) {
-        console.warn("localStorage quota exceeded, pruning history images to save space...");
-        let prunedHistory = [...updatedHistory];
-        
-        // Step 1: Keep imageSrc only for the 3 most recent items, clear for older ones
-        for (let i = 3; i < prunedHistory.length; i++) {
-          if (prunedHistory[i]) {
-            prunedHistory[i] = { ...prunedHistory[i], imageSrc: "" };
-          }
-        }
-        
-        try {
-          localStorage.setItem("oeilAtelier_history", JSON.stringify(prunedHistory));
-          setHistoryList(prunedHistory);
-        } catch (innerError) {
-          console.warn("Still exceeding quota. Keeping imageSrc only for the single most recent item...");
-          // Step 2: Keep imageSrc only for the most recent item, clear for all others
-          for (let i = 1; i < prunedHistory.length; i++) {
-            if (prunedHistory[i]) {
-              prunedHistory[i] = { ...prunedHistory[i], imageSrc: "" };
-            }
-          }
-          
-          try {
-            localStorage.setItem("oeilAtelier_history", JSON.stringify(prunedHistory));
-            setHistoryList(prunedHistory);
-          } catch (lastError) {
-            console.error("Even minimal history exceeds quota. Truncating history to 5 items without images...");
-            // Step 3: Clear all images and limit to 5 entries
-            const tinyHistory = prunedHistory.slice(0, 5).map(item => ({ ...item, imageSrc: "" }));
-            try {
-              localStorage.setItem("oeilAtelier_history", JSON.stringify(tinyHistory));
-              setHistoryList(tinyHistory);
-            } catch (err) {
-              console.error("Failed to save history completely. Resetting history state.");
-              localStorage.removeItem("oeilAtelier_history");
-              setHistoryList([]);
-            }
-          }
-        }
-      }
+
+      setLogbookNotification({
+        message: `Analyse « ${activeTool?.label || "Outil"} » enregistrée dans votre Carnet de Bord.`,
+        visible: true
+      });
+      setTimeout(() => {
+        setLogbookNotification((prev) => (prev ? { ...prev, visible: false } : null));
+      }, 4000);
 
     } catch (err: any) {
       console.error("Analysis execution error:", err);
@@ -1174,6 +1232,15 @@ export default function App() {
     // If we don't have results for this tool yet, and an image is loaded, launch the analysis immediately
     if (!cache[toolId] && imageBase64) {
       await executeAnalysis(toolId);
+    }
+    // Sur écrans mobiles et tablettes, faire défiler automatiquement jusqu'aux résultats
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      setTimeout(() => {
+        const el = document.getElementById("results-panel-container");
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 120);
     }
   };
 
@@ -1392,27 +1459,150 @@ export default function App() {
   const handleClearHistory = () => {
     setHistoryList([]);
     localStorage.removeItem("oeilAtelier_history");
+    if (currentUser) {
+      historyList.forEach((item) => {
+        deleteCloudHistoryItem(currentUser.uid, item.id).catch(console.error);
+      });
+    }
   };
+
+  // Handler: Delete single History item
+  const handleDeleteHistoryItem = (id: number) => {
+    setHistoryList((prev) => {
+      const updated = prev.filter((item) => item.id !== id);
+      safeSaveHistoryToLocalStorage(updated);
+      return updated;
+    });
+    if (currentUser) {
+      deleteCloudHistoryItem(currentUser.uid, id).catch(console.error);
+    }
+  };
+
+  // Handler: Explicitly save current active analysis directly into Carnet de Bord
+  const handleSaveCurrentToLogbook = async () => {
+    const currentResult = cache[activeToolId];
+    if (!currentResult) {
+      setError("Aucune analyse active à enregistrer. Lancez d'abord une analyse sur votre œuvre.");
+      return;
+    }
+
+    const activeTool = TOOLS.find((t) => t.id === activeToolId);
+    let summaryText = "";
+    if (currentResult && typeof currentResult === "object") {
+      if (currentResult.style) {
+        summaryText = typeof currentResult.style === "string" ? `Style: ${currentResult.style.slice(0, 100)}` : "Analyse de style";
+      } else if (currentResult.harmonie) {
+        summaryText = typeof currentResult.harmonie === "string" ? `Palette: ${currentResult.harmonie.slice(0, 100)}` : "Palette chromatique";
+      } else if (currentResult.titre_critique) {
+        summaryText = `Critique: ${currentResult.titre_critique}`;
+      } else if (currentResult.titre_oeuvre) {
+        summaryText = `Certificat pour « ${currentResult.titre_oeuvre} »`;
+      } else if (currentResult.titre_expo) {
+        summaryText = `Expo: ${currentResult.titre_expo}`;
+      } else if (currentResult.titre_event) {
+        summaryText = `Vernissage: ${currentResult.titre_event}`;
+      } else if (currentResult.titre_poeme) {
+        summaryText = `Poème: ${currentResult.titre_poeme}`;
+      } else {
+        summaryText = `Fiche ${activeTool?.label || "Analyse"}`;
+      }
+    } else {
+      summaryText = `Fiche ${activeTool?.label || "Analyse"}`;
+    }
+
+    if (activeSeries.length > 1) {
+      summaryText = `[Série de ${activeSeries.length} œuvres] ${summaryText}`;
+    }
+
+    const artworkName = (selectedArtwork && selectedArtwork.title) || (file ? file.name : (activeSeries.length > 0 ? activeSeries[0].title : "Œuvre d'Atelier"));
+
+    let compressedImage = "";
+    if (imageBase64) {
+      try {
+        compressedImage = await resizeImageBase64(imageBase64, 120, 120, 0.5);
+      } catch (err) {
+        compressedImage = "";
+      }
+    }
+
+    const newHistoryItem: HistoryItem = {
+      id: Date.now(),
+      date: new Date().toLocaleDateString("fr-FR", {
+        day: "2-digit",
+        month: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit"
+      }),
+      filename: activeSeries.length > 1 ? `Série de ${activeSeries.length} œuvres` : artworkName,
+      toolId: activeToolId,
+      toolLabel: activeTool?.label || "Analyse",
+      summary: summaryText,
+      result: currentResult,
+      imageSrc: compressedImage
+    };
+
+    setHistoryList((prev) => {
+      const filtered = prev.filter(
+        (h) => !(h.toolId === activeToolId && h.filename === artworkName && Date.now() - h.id < 45000)
+      );
+      const updated = [newHistoryItem, ...filtered].slice(0, 50);
+      safeSaveHistoryToLocalStorage(updated);
+      return updated;
+    });
+
+    if (currentUser) {
+      saveCloudHistoryItem(currentUser.uid, newHistoryItem).catch(console.error);
+    }
+
+    setLogbookNotification({
+      message: `« ${activeTool?.label || "Analyse"} » enregistrée avec succès dans votre Carnet de Bord !`,
+      visible: true
+    });
+    setTimeout(() => {
+      setLogbookNotification((prev) => (prev ? { ...prev, visible: false } : null));
+    }, 4500);
+  };
+
+  const isCurrentAnalysisInLogbook = Boolean(
+    cache[activeToolId] &&
+    historyList.some(
+      (h) =>
+        h.toolId === activeToolId &&
+        ((selectedArtwork && h.filename === selectedArtwork.title) ||
+          (file && h.filename === file.name) ||
+          (activeSeries.length > 0 && h.filename.includes("Série")))
+    )
+  );
 
   // Handler: Load past History item
   const handleLoadHistoryItem = (item: HistoryItem) => {
-    setImageBase64(item.imageSrc);
-    setPreviewUrl(item.imageSrc);
-    setFile(null); // File handle is lost since we reloaded from base64 string
+    if (item.imageSrc) {
+      setImageBase64(item.imageSrc);
+      setPreviewUrl(item.imageSrc);
+      setFile(null); // File handle is lost since we reloaded from base64 string
+    }
     setActiveToolId(item.toolId);
     
     // Seed cache with the saved result of this history item
-    setCache({
+    setCache((prev) => ({
+      ...prev,
       [item.toolId]: item.result
-    });
+    }));
     setError(null);
+
+    setTimeout(() => {
+      const el = document.getElementById("results-panel-container");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }, 150);
   };
 
   return (
     <div className={`min-h-screen relative overflow-x-hidden flex flex-col justify-between selection:bg-[#c9a84c] selection:text-black transition-colors duration-500 ${
       theme === "dark-gold"
-        ? "bg-[#0A0A0A] text-[#E0E0E0] border-0 md:border-[8px] lg:border-[12px] border-[#141414]"
-        : "bg-[#FAF7F2] text-[#2C2A29] border-0 md:border-[8px] lg:border-[12px] border-[#e8dfd3]"
+        ? "bg-[#0A0A0A] text-[#E0E0E0]"
+        : "bg-[#FAF7F2] text-[#2C2A29]"
     }`}>
       
       {/* Background film-grain noise */}
@@ -1424,212 +1614,217 @@ export default function App() {
       />
 
       {/* Foreground Container */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8 flex-1 flex flex-col">
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-24 sm:pb-36 flex-1 flex flex-col">
         
         {/* Header */}
-        <header className={`mb-6 sm:mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6 pb-4 sm:pb-6 border-b transition-colors duration-500 ${
+        <header className={`mb-6 sm:mb-8 pb-4 sm:pb-6 border-b transition-colors duration-500 space-y-4 ${
           theme === "dark-gold" ? "border-white/10" : "border-stone-200"
         }`}>
-          <div className="text-center md:text-left flex flex-col">
-            <span className={`text-[10px] sm:text-[11px] font-sans font-bold tracking-[0.3em] uppercase mb-1 transition-colors duration-300 ${
-              theme === "dark-gold" ? "text-neutral-500" : "text-stone-500"
-            }`}>
-              {t("bridge_tagline", "LE PONT INTELLIGENT ENTRE ARTISTES, GALERIES & ACHETEURS")}
-            </span>
-            <h1 className={`font-serif font-light text-3xl sm:text-5xl md:text-6xl tracking-tight leading-none transition-colors duration-300 ${
-              theme === "dark-gold" ? "text-white" : "text-stone-950"
-            }`}>
-              L'Œil de <span className="italic text-[#c9a84c] font-light font-serif">{t("app_title_suffix", "l'Atelier")}</span>
-            </h1>
-            <p className={`text-[9px] sm:text-[10px] tracking-[0.15em] uppercase font-sans mt-2 sm:mt-3.5 transition-colors duration-300 font-bold ${
-              theme === "dark-gold" ? "text-[#c9a84c]" : "text-[#9c7d2b]"
-            }`}>
-              {t("app_subtitle", "36 OUTILS IA POUR CRÉER, VALORISER, EXPOSER & VENDRE VOTRE ART")}
-            </p>
+          {/* Top Row: Brand & System Utilities */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="text-center md:text-left flex flex-col">
+              <span className={`text-[10px] sm:text-[11px] font-sans font-bold tracking-[0.3em] uppercase mb-1 transition-colors duration-300 ${
+                theme === "dark-gold" ? "text-neutral-500" : "text-stone-500"
+              }`}>
+                {t("bridge_tagline", "LE PONT INTELLIGENT ENTRE ARTISTES, GALERIES & ACHETEURS")}
+              </span>
+              <h1 className={`font-serif font-light text-3xl sm:text-5xl md:text-6xl tracking-tight leading-none transition-colors duration-300 ${
+                theme === "dark-gold" ? "text-white" : "text-stone-950"
+              }`}>
+                L'Œil de <span className="italic text-[#c9a84c] font-light font-serif">{t("app_title_suffix", "l'Atelier")}</span>
+              </h1>
+              <p className={`text-[9px] sm:text-[10px] tracking-[0.15em] uppercase font-sans mt-2 sm:mt-3.5 transition-colors duration-300 font-bold ${
+                theme === "dark-gold" ? "text-[#c9a84c]" : "text-[#9c7d2b]"
+              }`}>
+                {t("app_subtitle", "36 OUTILS IA POUR CRÉER, VALORISER, EXPOSER & VENDRE VOTRE ART")}
+              </p>
+            </div>
+
+            {/* Quick System Utilities: Language, Theme & Cloud */}
+            <div className="flex items-center justify-center md:justify-end gap-2 shrink-0 flex-wrap">
+              {/* Language Selector */}
+              <button
+                id="language-selector-btn"
+                onClick={() => setIsLanguageModalOpen(true)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs tracking-wider uppercase font-sans font-bold transition-all duration-300 rounded-none shadow-sm border cursor-pointer ${
+                  theme === "dark-gold"
+                    ? "bg-black text-[#c9a84c] border-[#c9a84c]/60 hover:bg-[#c9a84c] hover:text-black"
+                    : "bg-white text-stone-900 border-stone-300 hover:bg-stone-50"
+                }`}
+                title="Changer la langue officielle / Change language (14 langues)"
+              >
+                <span className="text-sm leading-none">{langMeta.flag}</span>
+                <span className="font-bold">{langMeta.code.toUpperCase()}</span>
+                <Globe className="w-3.5 h-3.5 text-[#c9a84c]" />
+              </button>
+
+              {/* Theme Selector Toggle */}
+              <button
+                onClick={handleToggleTheme}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs tracking-wider uppercase font-sans font-bold transition-all duration-300 rounded-none shadow-sm border cursor-pointer ${
+                  theme === "dark-gold"
+                    ? "bg-black text-[#c9a84c] border-[#c9a84c]/60 hover:bg-[#c9a84c] hover:text-black"
+                    : "bg-white text-stone-900 border-stone-300 hover:bg-stone-50"
+                }`}
+                title="Basculer entre Mode Clair et Noir & Or"
+              >
+                <Paintbrush className="w-3.5 h-3.5 text-[#c9a84c]" />
+                <span className="hidden sm:inline">{theme === "dark-gold" ? t("theme_light", "Mode Clair") : t("theme_dark", "Noir & Or")}</span>
+              </button>
+
+              {/* Compte Cloud Multi-Appareils */}
+              <button
+                id="cloud-account-header-btn"
+                onClick={() => setIsAccountModalOpen(true)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs tracking-wider uppercase font-sans font-bold transition-all duration-300 rounded-none shadow-sm border cursor-pointer ${
+                  currentUser
+                    ? "bg-emerald-950/80 text-emerald-400 border-emerald-500 hover:bg-emerald-900"
+                    : (theme === "dark-gold"
+                        ? "bg-[#14120a] text-[#c9a84c] border-[#c9a84c]/60 hover:bg-[#c9a84c] hover:text-black"
+                        : "bg-amber-50 text-stone-900 border-[#c9a84c] hover:bg-amber-100")
+                }`}
+                title="Gérer votre compte multi-appareils (PC, tablette, mobile) et synchroniser vos données"
+              >
+                <Cloud className={`w-3.5 h-3.5 text-[#c9a84c] ${isSyncing ? "animate-spin" : ""}`} />
+                <span>{currentUser ? (currentUser.displayName || "Mon Espace") : "Cloud Sync"}</span>
+                {currentUser && <span className="w-2 h-2 rounded-full bg-emerald-400" />}
+              </button>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center md:justify-end gap-2 sm:gap-3">
-            {/* Language Selector Trigger */}
+          {/* Lower Row: Studio Action Toolbar */}
+          <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 pt-1 border-t border-dashed border-white/5">
+            {/* Carnet de Bord (Primary highlight) */}
             <button
-              id="language-selector-btn"
-              onClick={() => setIsLanguageModalOpen(true)}
-              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 text-xs tracking-wider uppercase font-sans font-black transition-all duration-300 rounded-none shadow-md border cursor-pointer ${
+              onClick={() => setIsHistoryOpen(true)}
+              className={`flex items-center gap-2 px-3.5 py-1.5 text-xs tracking-wider uppercase font-sans font-black transition-all duration-300 rounded-none shadow-md cursor-pointer ${
                 theme === "dark-gold"
-                  ? "bg-black text-[#c9a84c] border-[#c9a84c] hover:bg-[#c9a84c] hover:text-black"
-                  : "bg-white text-stone-900 border-stone-300 hover:bg-stone-50"
+                  ? "bg-[#c9a84c] text-black hover:bg-white"
+                  : "bg-stone-900 text-white hover:bg-[#c9a84c] hover:text-black"
               }`}
-              title="Changer la langue officielle / Change language (14 langues traduites)"
+              title="Consulter l'historique et les fiches sauvegardées dans le Carnet de Bord"
             >
-              <span className="text-base leading-none">{langMeta.flag}</span>
-              <span className="font-bold">{langMeta.code.toUpperCase()}</span>
-              <Globe className="w-3.5 h-3.5 text-[#c9a84c]" />
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>{t("logbook_btn", "Carnet de Bord")}</span>
+              {historyList.length > 0 && (
+                <span className={`px-1.5 py-0.2 text-[10px] font-mono font-black ${
+                  theme === "dark-gold" ? "bg-black text-[#c9a84c]" : "bg-[#c9a84c] text-black"
+                }`}>
+                  {historyList.length}
+                </span>
+              )}
             </button>
 
-            {/* Theme Selector Toggle */}
+            {/* Cartels Muraux & QR Vente */}
             <button
-              onClick={handleToggleTheme}
-              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 text-xs tracking-wider uppercase font-sans font-black transition-all duration-300 rounded-none shadow-md border ${
-                theme === "dark-gold"
-                  ? "bg-black text-[#c9a84c] border-[#c9a84c] hover:bg-[#c9a84c] hover:text-black"
-                  : "bg-white text-stone-900 border-stone-300 hover:bg-stone-50"
-              }`}
+              id="qr-sales-cartel-btn"
+              onClick={() => setIsQrSalesModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs tracking-wider uppercase font-sans font-bold transition-all duration-300 rounded-none shadow-sm border bg-[#c9a84c]/20 text-[#c9a84c] border-[#c9a84c] hover:bg-[#c9a84c] hover:text-black cursor-pointer"
+              title="Générateur de cartels muraux prêts à imprimer en A4 (5x3 cm et 5x4 cm) avec QR de vente"
             >
-              <Paintbrush className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              {theme === "dark-gold" ? t("theme_light", "Mode Clair") : t("theme_dark", "Noir & Or")}
+              <QrCode className="w-3.5 h-3.5" />
+              <span>{t("cartels_btn", "Cartels & QR Vente")}</span>
             </button>
 
-            {/* Profil Artiste Trigger Button */}
+            {/* Atelier Pro */}
+            <button
+              id="atelier-pro-top-btn"
+              onClick={() => setIsSubscriptionModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs tracking-wider uppercase font-sans font-bold transition-all duration-300 rounded-none shadow-sm border bg-gradient-to-r from-[#b8973e] via-[#c9a84c] to-[#e4cb78] text-black border-[#c9a84c] hover:brightness-110 cursor-pointer"
+              title="Abonnement Atelier Pro"
+            >
+              <Crown className="w-3.5 h-3.5 text-black" />
+              <span>{isSubscriptionActive ? t("pro_active", "Atelier Pro (Actif)") : t("pro_btn", "Atelier Pro")}</span>
+            </button>
+
+            {/* Profil Artiste */}
             <button
               onClick={() => setIsProfileModalOpen(true)}
-              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 text-xs tracking-wider uppercase font-sans font-black transition-all duration-300 rounded-none shadow-md border ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs tracking-wider uppercase font-sans font-medium transition-all duration-300 rounded-none border cursor-pointer ${
                 profile.name.trim()
-                  ? "bg-[#c9a84c] text-black border-[#c9a84c] hover:bg-white"
+                  ? "bg-[#c9a84c]/15 text-[#c9a84c] border-[#c9a84c] hover:bg-[#c9a84c] hover:text-black"
                   : (theme === "dark-gold"
-                      ? "bg-black text-[#c9a84c] border-[#c9a84c]/60 hover:bg-[#c9a84c] hover:text-black"
-                      : "bg-white text-stone-900 border-stone-300 hover:bg-stone-50")
+                      ? "bg-black/50 text-neutral-300 border-white/10 hover:border-[#c9a84c]/60 hover:text-white"
+                      : "bg-white text-stone-700 border-stone-300 hover:bg-stone-50")
               }`}
               title="Renseigner ou modifier votre profil d'artiste"
             >
-              <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <User className="w-3.5 h-3.5 text-[#c9a84c]" />
               <span>{profile.name.trim() ? profile.name : t("artist_profile", "Profil Artiste")}</span>
             </button>
 
-            {/* Compte Cloud Multi-Appareils (PC, Tablette, Smartphone) */}
+            {/* 36 Outils IA */}
             <button
-              id="cloud-account-header-btn"
-              onClick={() => setIsAccountModalOpen(true)}
-              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 text-xs tracking-wider uppercase font-sans font-black transition-all duration-300 rounded-none shadow-md border cursor-pointer ${
-                currentUser
-                  ? "bg-emerald-950/80 text-emerald-400 border-emerald-500 hover:bg-emerald-900"
-                  : (theme === "dark-gold"
-                      ? "bg-[#14120a] text-[#c9a84c] border-[#c9a84c] hover:bg-[#c9a84c] hover:text-black"
-                      : "bg-amber-50 text-stone-900 border-[#c9a84c] hover:bg-amber-100")
+              onClick={() => setIsHubModalOpen(true)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs tracking-wider uppercase font-sans font-medium transition-all duration-300 rounded-none border cursor-pointer ${
+                theme === "dark-gold"
+                  ? "bg-black/50 text-neutral-300 border-white/10 hover:border-[#c9a84c] hover:text-[#c9a84c]"
+                  : "bg-white text-stone-700 border-stone-300 hover:border-[#c9a84c]"
               }`}
-              title="Gérer votre compte multi-appareils (PC, tablette, mobile) et synchroniser vos données"
+              title="Ouvrir le Hub des 5 Pôles et 36 Outils"
             >
-              <Cloud className={`w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#c9a84c] ${isSyncing ? "animate-spin" : ""}`} />
-              <span>{currentUser ? (currentUser.displayName || "Mon Compte") : "Compte Cloud"}</span>
-              {currentUser && <span className="w-2 h-2 rounded-full bg-emerald-400" />}
+              <Layers className="w-3.5 h-3.5 text-[#c9a84c]" />
+              <span>{t("hub_btn", "36 Outils IA")}</span>
             </button>
 
-            {/* Guide & Explications (Tout ce qu'il est possible de faire) */}
+            {/* Guide & Explications */}
             <button
               id="top-guide-toggle-btn"
               onClick={() => setIsTopExplanationOpen((prev) => !prev)}
-              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 text-xs tracking-wider uppercase font-sans font-black transition-all duration-300 rounded-none shadow-md border cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs tracking-wider uppercase font-sans font-medium transition-all duration-300 rounded-none border cursor-pointer ${
                 isTopExplanationOpen
-                  ? "bg-[#c9a84c] text-black border-[#c9a84c] hover:bg-white"
+                  ? "bg-[#c9a84c] text-black border-[#c9a84c]"
                   : (theme === "dark-gold"
-                      ? "bg-[#14120a] text-[#c9a84c] border-[#c9a84c]/60 hover:bg-[#c9a84c] hover:text-black"
-                      : "bg-amber-50 text-stone-900 border-amber-300 hover:border-[#c9a84c] hover:bg-amber-100")
+                      ? "bg-black/50 text-neutral-400 border-white/10 hover:text-white"
+                      : "bg-white text-stone-600 border-stone-300 hover:text-black")
               }`}
-              title={isTopExplanationOpen ? "Masquer le guide d'explications" : "Afficher le guide d'explications de toute l'application"}
+              title={isTopExplanationOpen ? "Masquer le guide d'explications" : "Afficher le guide d'explications"}
             >
-              <HelpCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <HelpCircle className="w-3.5 h-3.5" />
               <span>{t("guide_btn", "Guide")}</span>
               <span className="text-[10px]">{isTopExplanationOpen ? "▲" : "▼"}</span>
             </button>
 
-            {/* Hub Stratégique - 5 Pôles & 36 Outils IA */}
-            <button
-              onClick={() => setIsHubModalOpen(true)}
-              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 text-xs tracking-wider uppercase font-sans font-black transition-all duration-300 rounded-none shadow-md border ${
-                theme === "dark-gold"
-                  ? "bg-[#14120a] text-white border-[#c9a84c]/60 hover:border-[#c9a84c] hover:text-[#c9a84c]"
-                  : "bg-white text-stone-900 border-stone-300 hover:border-[#c9a84c]"
-              }`}
-              title="Ouvrir le Hub Stratégique des 5 Pôles et 36 Outils d'Art"
-            >
-              <Layers className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#c9a84c]" />
-              <span>{t("hub_btn", "36 Outils IA")}</span>
-            </button>
+            {/* Dossier Global (visible when analyses exist) */}
+            {Object.keys(cache).length > 0 && (
+              <button
+                type="button"
+                onClick={() => setIsGlobalReportModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs tracking-wider uppercase font-sans font-bold transition-all duration-300 rounded-none shadow-sm border bg-[#c9a84c] text-black border-[#c9a84c] hover:bg-white cursor-pointer animate-fadeIn"
+                title="Consulter et exporter le dossier complet de l'œuvre"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>{t("global_report", "Dossier Global")} ({Object.keys(cache).length}/16)</span>
+              </button>
+            )}
 
-            {/* Atelier Pro - Bouton Doré Royal Prestigieux */}
-            <button
-              id="atelier-pro-top-btn"
-              onClick={() => setIsSubscriptionModalOpen(true)}
-              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 text-xs tracking-wider uppercase font-sans font-black transition-all duration-300 rounded-none shadow-md border bg-gradient-to-r from-[#b8973e] via-[#c9a84c] to-[#e4cb78] text-black border-[#c9a84c] hover:brightness-110 hover:shadow-[0_0_15px_rgba(201,168,76,0.45)] cursor-pointer"
-              title="Abonnement Atelier Pro : 3 € / mois ou 20 € / an (1ère année)"
-            >
-              <Crown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-black fill-black/20" />
-              <span>{isSubscriptionActive ? t("pro_active", "Atelier Pro (Actif)") : t("pro_btn", "Atelier Pro")}</span>
-            </button>
-
-            {/* Cartels Muraux & QR Codes de Vente Directe */}
-            <button
-              id="qr-sales-cartel-btn"
-              onClick={() => setIsQrSalesModalOpen(true)}
-              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 text-xs tracking-wider uppercase font-sans font-black transition-all duration-300 rounded-none shadow-md border bg-[#c9a84c] text-black border-[#c9a84c] hover:bg-white cursor-pointer"
-              title="Générateur de cartels muraux prêts à imprimer avec QR codes de vente et 50 innovations marché"
-            >
-              <QrCode className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-black" />
-              <span className="hidden xs:inline">{t("cartels_btn", "Cartels & QR Vente")}</span>
-            </button>
-
-            {/* Galerie 3D Immersive */}
-            <button
-              id="gallery-3d-header-btn"
-              onClick={() => setIsGallery3DOpen(true)}
-              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 text-xs tracking-wider uppercase font-sans font-black transition-all duration-300 rounded-none shadow-md border bg-gradient-to-r from-amber-600 via-[#c9a84c] to-amber-300 text-black border-[#c9a84c] hover:brightness-110 cursor-pointer shadow-[0_0_12px_rgba(201,168,76,0.3)]"
-              title="Galerie 3D Immersive avec mode contraste, lumière rasante, spots et audioguide spatialisé"
-            >
-              <Box className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-black animate-pulse" />
-              <span>Galerie 3D</span>
-            </button>
-
-            {/* Partage Universel (Artistes • Galeristes • Visiteurs • Collectionneurs) */}
+            {/* Partager */}
             <button
               id="share-app-btn"
               onClick={() => {
                 setShareRole("all");
                 setIsShareModalOpen(true);
               }}
-              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 text-xs tracking-wider uppercase font-sans font-black transition-all duration-300 rounded-none shadow-md border border-[#c9a84c] text-[#c9a84c] hover:bg-[#c9a84c] hover:text-black cursor-pointer"
-              title="Partager des liens directs vers l'application (Galeristes, Artistes, Visiteurs, Acheteurs)"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs tracking-wider uppercase font-sans font-medium transition-all duration-300 rounded-none border border-white/10 text-neutral-400 hover:border-[#c9a84c] hover:text-[#c9a84c] cursor-pointer"
+              title="Partager un lien direct vers l'application"
             >
-              <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <Share2 className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">{t("share_btn", "Partager")}</span>
             </button>
 
-            {/* Dossier Global (16 Outils) Export Button - Visible when analyses exist */}
-            {Object.keys(cache).length > 0 && (
-              <button
-                type="button"
-                onClick={() => setIsGlobalReportModalOpen(true)}
-                className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 text-xs tracking-wider uppercase font-sans font-black transition-all duration-300 rounded-none shadow-md border bg-gradient-to-r from-[#b8973e] via-[#c9a84c] to-[#e4cb78] text-black border-[#c9a84c] hover:brightness-110 cursor-pointer animate-fadeIn"
-                title="Télécharger le dossier complet en HTML autonome, copier-coller ou partager"
-              >
-                <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-black" />
-                <span>{t("global_report", "Dossier Global")} ({Object.keys(cache).length}/16)</span>
-              </button>
-            )}
-
-            {/* Donation System Trigger */}
+            {/* Soutenir */}
             <button
               id="support-donation-btn"
               onClick={() => setIsDonationOpen(true)}
-              className={`flex items-center gap-1.5 px-3 sm:px-3.5 py-2 text-xs tracking-wider uppercase font-sans font-bold transition-all duration-300 rounded-none shadow-md border cursor-pointer ${
+              className={`flex items-center gap-1 px-2.5 py-1.5 text-xs tracking-wider uppercase font-sans font-medium transition-all duration-300 rounded-none border cursor-pointer ${
                 theme === "dark-gold"
-                  ? "bg-rose-950/20 text-rose-300 border-rose-900/40 hover:bg-rose-900 hover:text-white"
-                  : "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 hover:text-rose-800"
+                  ? "bg-rose-950/20 text-rose-300 border-rose-900/40 hover:bg-rose-900/40"
+                  : "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100"
               }`}
               title="Soutenir l'Atelier"
             >
               <span>{t("support_btn", "Soutenir")}</span>
               <Heart className="w-3 h-3 text-red-500 fill-red-500 shrink-0" />
-            </button>
-
-            {/* Carnet de Bord */}
-            <button
-              onClick={() => setIsHistoryOpen(true)}
-              className={`flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-2 text-xs tracking-wider uppercase font-sans font-black transition-all duration-300 rounded-none shadow-md border-none ${
-                theme === "dark-gold"
-                  ? "bg-[#c9a84c] text-black hover:bg-white"
-                  : "bg-stone-900 text-white hover:bg-[#c9a84c] hover:text-black"
-              }`}
-            >
-              <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              {t("logbook_btn", "Carnet de Bord")}
             </button>
           </div>
         </header>
@@ -1661,7 +1856,7 @@ export default function App() {
           onOpenHistory={() => setIsHistoryOpen(true)}
         />
 
-        {/* MODE VISITEUR / KIOSQUE VERNISSAGE 3D OU MODE CURATION ATELIER */}
+        {/* MODE VISITEUR / KIOSQUE D'EXPOSITION NUMÉRIQUE OU MODE CURATION ATELIER */}
         {appExperienceMode === "visitor" ? (
           <div className="flex-1 flex flex-col min-h-[85vh] relative animate-fadeIn">
             {/* Ruban Supérieur Kiosque Minimaliste Vernissage */}
@@ -1671,7 +1866,7 @@ export default function App() {
               <div className="flex items-center gap-3">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
                 <span className="font-mono text-xs font-bold uppercase tracking-widest text-[#c9a84c]">
-                  Kiosque Vernissage 3D
+                  Kiosque d'Exposition
                 </span>
                 <span className="text-xs text-neutral-400 hidden sm:inline">• {profile.name || "Galerie de l'Atelier"}</span>
               </div>
@@ -1709,21 +1904,120 @@ export default function App() {
               </div>
             </div>
 
-            {/* Viewer 3D Intégré Plein Écran */}
-            <div className="flex-1 w-full min-h-[75vh] relative">
-              <Gallery3DViewer
-                isOpen={true}
-                onClose={() => setAppExperienceMode("curator")}
-                theme={theme}
-                artworks={getGallery3DArtworks()}
-                initialIndex={active3DIndex}
-                onSelectArtwork={(idx) => setActive3DIndex(idx)}
-                onOpenCircuit={() => setIsUrbanCircuitOpen(true)}
-                onOpenCartels={() => setIsQrSalesModalOpen(true)}
-                isKioskMode={isKioskMode}
-                onToggleKiosk={() => setIsKioskMode(prev => !prev)}
-              />
-            </div>
+            {/* Visionneuse 2D Kiosque Haute Définition */}
+            {(() => {
+              const artworks = getExhibitionArtworks();
+              const currentIndex = Math.min(activeKioskIndex, Math.max(0, artworks.length - 1));
+              const currentArt = artworks[currentIndex] || artworks[0];
+
+              return (
+                <div className="flex-1 flex flex-col justify-between bg-black p-4 sm:p-6 select-none min-h-[75vh]">
+                  {/* Zone Principale Œuvre */}
+                  <div className="relative flex-1 flex items-center justify-center min-h-[48vh] sm:min-h-[58vh]">
+                    {currentArt?.imageSrc ? (
+                      <div className="relative max-w-full max-h-full flex items-center justify-center">
+                        <img
+                          src={currentArt.imageSrc}
+                          alt={currentArt.title}
+                          className="max-h-[55vh] max-w-full object-contain shadow-2xl border border-white/10 rounded-sm"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center p-12 text-center text-neutral-500">
+                        <Palette className="w-16 h-16 mb-3 opacity-40 text-[#c9a84c]" />
+                        <p className="font-mono text-sm">Aucune œuvre dans l'exposition.</p>
+                      </div>
+                    )}
+
+                    {/* Flèches Précédent / Suivant */}
+                    {artworks.length > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setActiveKioskIndex((currentIndex - 1 + artworks.length) % artworks.length)}
+                          className="absolute left-2 sm:left-4 p-3 bg-black/70 hover:bg-[#c9a84c] text-white hover:text-black border border-white/20 transition-all rounded-full cursor-pointer shadow-lg z-10"
+                          title="Œuvre précédente"
+                        >
+                          <ChevronLeft className="w-6 h-6" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveKioskIndex((currentIndex + 1) % artworks.length)}
+                          className="absolute right-2 sm:right-4 p-3 bg-black/70 hover:bg-[#c9a84c] text-white hover:text-black border border-white/20 transition-all rounded-full cursor-pointer shadow-lg z-10"
+                          title="Œuvre suivante"
+                        >
+                          <ChevronRight className="w-6 h-6" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Cartouche d'Informations Artistiques & Vente */}
+                  {currentArt && (
+                    <div className="mt-4 pt-4 border-t border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 max-w-5xl mx-auto w-full">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h2 className="text-lg sm:text-xl font-serif font-bold text-white tracking-wide">
+                            {currentArt.title}
+                          </h2>
+                          <span className="text-xs font-mono text-[#c9a84c] border border-[#c9a84c]/40 px-2 py-0.5">
+                            {currentIndex + 1} / {artworks.length}
+                          </span>
+                        </div>
+                        <p className="text-xs font-sans text-neutral-400">
+                          <span className="text-white font-medium">{currentArt.artist}</span> • {currentArt.medium} {currentArt.year ? `(${currentArt.year})` : ""}
+                        </p>
+                        {currentArt.description && (
+                          <p className="text-xs text-neutral-300 line-clamp-2 max-w-2xl font-light">
+                            {currentArt.description}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-3 shrink-0">
+                        {currentArt.price && (
+                          <span className="font-mono text-sm font-bold text-[#c9a84c] px-3 py-1.5 bg-[#c9a84c]/10 border border-[#c9a84c]/30">
+                            {currentArt.price}
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setIsQrSalesModalOpen(true)}
+                          className="flex items-center gap-1.5 px-4 py-2 bg-[#c9a84c] text-black text-xs font-mono font-bold uppercase hover:bg-white transition-colors cursor-pointer shadow-md"
+                        >
+                          <QrCode className="w-4 h-4" />
+                          <span>Cartel & Acquérir</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Bandeau de Vignettes Défilantes */}
+                  {artworks.length > 1 && (
+                    <div className="mt-3 flex items-center justify-center gap-2 overflow-x-auto no-scrollbar py-1">
+                      {artworks.map((art, idx) => (
+                        <button
+                          key={art.id || idx}
+                          type="button"
+                          onClick={() => setActiveKioskIndex(idx)}
+                          className={`h-12 w-16 shrink-0 border-2 overflow-hidden transition-all cursor-pointer ${
+                            idx === currentIndex ? "border-[#c9a84c] scale-105" : "border-white/20 opacity-50 hover:opacity-100"
+                          }`}
+                        >
+                          <img
+                            src={art.imageSrc}
+                            alt={art.title}
+                            className="w-full h-full object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         ) : (
           <>
@@ -1746,19 +2040,6 @@ export default function App() {
                 >
                   <Paintbrush className="w-3.5 h-3.5" />
                   <span>Atelier & Diagnostic</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setIsGallery3DOpen(true)}
-                  className="px-3 sm:px-4 py-2 text-xs font-mono font-bold uppercase transition-all flex items-center gap-2 bg-gradient-to-r from-[#b8973e] via-[#c9a84c] to-[#e4cb78] text-black hover:brightness-110 shadow-md cursor-pointer shrink-0"
-                  title="Ouvrir la Galerie 3D immersive"
-                >
-                  <Box className="w-3.5 h-3.5 text-black" />
-                  <span>Galerie 3D</span>
-                  <span className="text-[9px] px-1.5 py-0.2 bg-black text-[#c9a84c] font-black">
-                    3D
-                  </span>
                 </button>
 
                 <button
@@ -1838,9 +2119,9 @@ export default function App() {
                     </button>
                   </div>
 
-                  {/* Card 2: Galerie 3D Direct */}
+                  {/* Card 2: Parcours Urbain Géolocalisé */}
                   <div
-                    onClick={() => setIsGallery3DOpen(true)}
+                    onClick={() => setIsUrbanCircuitOpen(true)}
                     className={`p-5 border cursor-pointer transition-all hover:scale-[1.01] flex flex-col justify-between ${
                       theme === "dark-gold"
                         ? "bg-[#111111] border-white/10 hover:border-[#c9a84c]"
@@ -1849,17 +2130,17 @@ export default function App() {
                   >
                     <div className="space-y-2">
                       <div className="w-10 h-10 bg-[#c9a84c] text-black font-black flex items-center justify-center text-lg">
-                        🏛️
+                        🗺️
                       </div>
                       <h3 className={`text-base font-serif font-bold ${theme === "dark-gold" ? "text-white" : "text-stone-900"}`}>
-                        Galerie 3D Immersive
+                        Parcours Urbain & Carte Interactive
                       </h3>
                       <p className={`text-xs leading-relaxed ${theme === "dark-gold" ? "text-neutral-400" : "text-stone-600"}`}>
-                        Visitez l'exposition virtuelle en trois dimensions avec réglage des spots, cadres au choix et reflets de sol.
+                        Circuit géolocalisé hors-les-murs, points d'étape artistiques, carnet d'adresses et guidage nocturne.
                       </p>
                     </div>
                     <button type="button" className="mt-4 px-3 py-2 bg-[#c9a84c] text-black font-mono font-bold text-xs uppercase tracking-wider text-center">
-                      Lancer la Galerie 3D →
+                      Lancer le Parcours →
                     </button>
                   </div>
 
@@ -2913,6 +3194,10 @@ export default function App() {
                   previewUrl={previewUrl}
                   onRerunCurrentTool={handleRerun}
                   onOpenGlobalReport={() => setIsGlobalReportModalOpen(true)}
+                  onSaveToLogbook={handleSaveCurrentToLogbook}
+                  isSavedInLogbook={isCurrentAnalysisInLogbook}
+                  onOpenLogbook={() => setIsHistoryOpen(true)}
+                  logbookCount={historyList.length}
                 />
               </div>
 
@@ -2925,16 +3210,61 @@ export default function App() {
       </div>
 
       {/* Footer */}
-      <footer className={`relative z-10 py-6 border-t text-center mt-12 text-[9px] uppercase tracking-[0.3em] transition-colors duration-300 ${
+      <footer className={`relative z-10 py-8 sm:py-10 border-t text-center mt-16 sm:mt-24 text-[10px] uppercase tracking-[0.2em] transition-colors duration-300 ${
         theme === "dark-gold"
-          ? "border-white/10 bg-black/40 text-neutral-500"
-          : "border-black/5 bg-[#f0ebd8] text-stone-600"
+          ? "border-white/10 bg-black/50 text-neutral-400"
+          : "border-stone-200 bg-[#f7f3ec] text-stone-600"
       }`}>
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-2">
-          <div>SYSTEM: OPTIMIZED | SERVER: PARIS_EAST</div>
-          <div>© 2026 ŒIL_ATELIER PRO TECHNOLOGY GROUP</div>
+        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="font-serif italic font-light text-sm text-[#c9a84c]">L'Œil de l'Atelier</span>
+            <span className="opacity-40">•</span>
+            <span>Plateforme d'Expertise Artistique, Scénographie & Vente Directe</span>
+          </div>
+          <div className="font-mono text-[9px] opacity-70">
+            Atelier d'Art & Technologies Visuelles • Paris 2026
+          </div>
         </div>
       </footer>
+
+      {/* Floating Carnet de Bord Toast Notification */}
+      {logbookNotification && logbookNotification.visible && (
+        <div className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-[60] max-w-[calc(100vw-2.5rem)] sm:max-w-md animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className={`px-4 py-3 border shadow-2xl flex items-center gap-3 ${
+            theme === "dark-gold"
+              ? "bg-[#141414] border-[#c9a84c] text-white shadow-black/80"
+              : "bg-white border-[#c9a84c] text-stone-900 shadow-amber-900/10"
+          }`}>
+            <div className="w-8 h-8 bg-[#c9a84c] text-black flex items-center justify-center flex-shrink-0 font-bold text-sm">
+              ✓
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-mono font-bold text-[#c9a84c] uppercase tracking-wider">
+                Carnet de Bord d'Atelier
+              </p>
+              <p className="text-xs font-sans mt-0.5 truncate">
+                {logbookNotification.message}
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setLogbookNotification(null);
+                setIsHistoryOpen(true);
+              }}
+              className="text-[10px] uppercase font-bold tracking-wider underline text-[#c9a84c] hover:opacity-80 px-1 py-0.5 whitespace-nowrap cursor-pointer"
+            >
+              Consulter
+            </button>
+            <button
+              onClick={() => setLogbookNotification(null)}
+              className="text-neutral-400 hover:text-stone-700 text-xs px-1 cursor-pointer"
+              title="Fermer"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* History modal ("Mon Carnet d'Atelier") */}
       <HistoryModal
@@ -2943,7 +3273,9 @@ export default function App() {
         historyList={historyList}
         onLoadHistoryItem={handleLoadHistoryItem}
         onClearHistory={handleClearHistory}
+        onDeleteItem={handleDeleteHistoryItem}
         theme={theme}
+        artistName={profile.name}
       />
 
       {/* Donation modal */}
@@ -2989,7 +3321,6 @@ export default function App() {
         onAnalyzeVernissageTool={handleAnalyzeVernissageTool}
         onOpenRsvpPartners={() => setIsEventRsvpPartnersOpen(true)}
         onOpenUrbanCircuit={() => setIsUrbanCircuitOpen(true)}
-        onOpenGallery3D={() => setIsGallery3DOpen(true)}
       />
 
       {/* Collector & Sales Modal (5 Outils Ventes Privées & Acheteurs) */}
@@ -3151,22 +3482,6 @@ export default function App() {
         isSyncing={isSyncing}
       />
 
-      {/* 1. Galerie 3D Immersive Dédiée aux Contrastes & Light Painting */}
-      {isGallery3DOpen && (
-        <Gallery3DViewer
-          isOpen={true}
-          onClose={() => setIsGallery3DOpen(false)}
-          theme={theme}
-          artworks={getGallery3DArtworks()}
-          initialIndex={active3DIndex}
-          onSelectArtwork={(idx) => setActive3DIndex(idx)}
-          onOpenCircuit={() => setIsUrbanCircuitOpen(true)}
-          onOpenCartels={() => setIsQrSalesModalOpen(true)}
-          isKioskMode={isKioskMode}
-          onToggleKiosk={() => setIsKioskMode(prev => !prev)}
-        />
-      )}
-
       {/* 2. Module Gestion des Événements & Partenaires Locaux (RSVP, Traiteurs, Snacks) */}
       {isEventRsvpPartnersOpen && (
         <EventRsvpPartnersModal
@@ -3174,19 +3489,17 @@ export default function App() {
           onClose={() => setIsEventRsvpPartnersOpen(false)}
           theme={theme}
           artistName={profile.name}
-          artworksCount={getGallery3DArtworks().length}
-          onOpenGallery3D={() => setIsGallery3DOpen(true)}
+          artworksCount={getExhibitionArtworks().length}
         />
       )}
 
-      {/* 4. Parcours Urbain & Scénographie Géolocalisée */}
+      {/* 3. Parcours Urbain & Scénographie Géolocalisée */}
       {isUrbanCircuitOpen && (
         <UrbanArtCircuitModal
           isOpen={true}
           onClose={() => setIsUrbanCircuitOpen(false)}
           theme={theme}
           artistName={profile.name}
-          onOpenGallery3D={() => setIsGallery3DOpen(true)}
         />
       )}
 
@@ -3198,7 +3511,6 @@ export default function App() {
           theme={theme}
           currentMode={appExperienceMode}
           onSwitchMode={(mode) => setAppExperienceMode(mode)}
-          onOpenGallery3D={() => setIsGallery3DOpen(true)}
         />
       )}
 
