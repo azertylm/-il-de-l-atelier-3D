@@ -228,7 +228,7 @@ export function generateGenerativeArt(title: string, artist: string, id: string)
   ctx.globalAlpha = 0.15;
   ctx.fillStyle = "white";
   ctx.font = "italic 11px Georgia, serif";
-  ctx.fillText("Composé par l'Œil de l'Atelier · Numérique Génératif", 60, 530);
+  ctx.fillText("Composé par l'Œil de l'atelier · Numérique Génératif", 60, 530);
 
   // Signature
   ctx.globalAlpha = 0.8;

@@ -39,7 +39,7 @@ export default function ModularPortalModal({
   frameborder="0" 
   allow="fullscreen" 
   style="border: 1px solid rgba(201,168,76,0.3); background: #050505; border-radius: 4px;"
-  title="L'Œil de l'Atelier - Curation & Vernissage">
+  title="l'Œil de l'atelier - Curation & Vernissage">
 </iframe>`;
 
   const postMessageSnippet = `// Piloter l'exposition depuis votre site parent via postMessage :

@@ -169,7 +169,7 @@ export default function ExplanationSection({
               </span>
             </div>
             <h3 className="font-serif font-bold text-lg sm:text-xl md:text-2xl mb-2">
-              L'Œil de l'Atelier : Votre Assistant d'Art Augmenté
+              l'Œil de l'atelier : Votre Assistant d'Art Augmenté
             </h3>
             <p className={`text-xs sm:text-sm leading-relaxed font-sans ${isDark ? "text-neutral-300" : "text-stone-700"}`}>
               Cette application a été spécialement conçue pour les <strong>artistes peintres, sculpteurs, photographes, illustrateurs et galeristes</strong>. 

@@ -2,8 +2,8 @@ import "dotenv/config";
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import { GoogleGenAI } from "@google/genai";
 import { PROMPTS_CONFIG } from "./serverPrompts.js";
+import { askAI, getAIStatus, AIProviderName } from "./serverAiRouter.js";
 
 async function startServer() {
   const app = express();
@@ -13,10 +13,22 @@ async function startServer() {
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-  // API endpoint for artwork analysis
+  // API endpoint for Sovereign & Hybrid AI Status (ALPHABETTE Architecture)
+  app.get("/api/ai-status", async (_req, res) => {
+    try {
+      const status = await getAIStatus();
+      return res.json(status);
+    } catch (err: any) {
+      return res.status(500).json({
+        error: { message: err?.message || "Erreur lors de la vérification du statut IA" }
+      });
+    }
+  });
+
+  // API endpoint for artwork analysis (Decoupled Strategy Pattern)
   app.post("/api/analyze", async (req, res) => {
     try {
-      const { image, images, mimeType, toolId, artistProfile, language } = req.body;
+      const { image, images, mimeType, toolId, artistProfile, language, providerOverride } = req.body;
 
       if (!image && (!images || images.length === 0)) {
         return res.status(400).json({ error: { message: "Aucune image fournie." } });
@@ -31,55 +43,23 @@ async function startServer() {
         return res.status(400).json({ error: { message: `Outil non supporté : ${toolId}` } });
       }
 
-      // Check for Gemini API key (env or fallback header)
-      const apiKey = process.env.GEMINI_API_KEY || (req.headers["x-gemini-api-key"] as string);
-      if (!apiKey || apiKey === "MY_GEMINI_API_KEY") {
-        return res.status(400).json({
-          error: {
-            message: "Clé API Gemini introuvable. Veuillez renseigner votre clé dans les Secrets de Google AI Studio ou utiliser le champ Clé API de l'application."
-          }
-        });
-      }
-
-      // Initialize Gemini Client
-      const ai = new GoogleGenAI({
-        apiKey: apiKey,
-        httpOptions: {
-          headers: {
-            "User-Agent": "aistudio-build",
-          },
-        },
-      });
-
       // Format image data
-      const imageParts: any[] = [];
+      const imageParts: Array<{ mimeType: string; base64Data: string }> = [];
       const hasMultipleImages = images && Array.isArray(images) && images.length > 0;
 
       if (hasMultipleImages) {
         // Cap series sample to a maximum of 8 images to prevent payload overflow
         const selectedImages = images.slice(0, 8);
         selectedImages.forEach((img: string) => {
-          let base64Data = img;
-          if (base64Data.includes(";base64,")) {
-            base64Data = base64Data.split(";base64,")[1];
-          }
           imageParts.push({
-            inlineData: {
-              mimeType: mimeType || "image/jpeg",
-              data: base64Data,
-            },
+            mimeType: mimeType || "image/jpeg",
+            base64Data: img,
           });
         });
       } else if (image) {
-        let base64Data = image;
-        if (base64Data.includes(";base64,")) {
-          base64Data = base64Data.split(";base64,")[1];
-        }
         imageParts.push({
-          inlineData: {
-            mimeType: mimeType || "image/jpeg",
-            data: base64Data,
-          },
+          mimeType: mimeType || "image/jpeg",
+          base64Data: image,
         });
       }
 
@@ -129,112 +109,61 @@ async function startServer() {
         contextText += `IMPORTANT : L'utilisateur a sélectionné la langue "${targetLang}". Tu dois OBLIGATOIREMENT rédiger TOUTES les parties de ta réponse (titres, critiques d'art, analyses plastiques, démarches d'atelier, conseils, descriptions de cartels, poésies, etc.) en ${targetLang}.`;
       }
 
-      // Supported Gemini models ordered for maximum availability and rapid fallback
-      const modelsToTry = [
-        "gemini-3.8-flash",
-        "gemini-3.1-flash-lite",
-        "gemini-flash-latest",
-        "gemini-3.7-flash"
-      ];
+      // Header or body provider override for testing / hybrid switching
+      const requestedProvider = (req.headers["x-ai-provider"] as AIProviderName) || providerOverride;
+      const geminiApiKey = (req.headers["x-gemini-api-key"] as string) || process.env.GEMINI_API_KEY;
 
-      const requestPayload = {
-        contents: {
-          parts: [
-            ...imageParts,
-            { text: contextText }
-          ]
-        },
-        config: {
-          systemInstruction: config.prompt,
-          responseMimeType: "application/json",
-          responseSchema: config.schema,
-          temperature: 0.8,
+      // Execute unified AI request via the Sovereign AI Router (Strategy Pattern)
+      const aiResult = await askAI({
+        systemPrompt: config.prompt,
+        userPrompt: contextText,
+        images: imageParts,
+        responseSchema: config.schema,
+        responseMimeType: "application/json",
+        temperature: 0.8,
+        providerOverride: requestedProvider,
+        geminiApiKey,
+      });
+
+      // Parse JSON from raw text if not already parsed
+      let finalJson = aiResult.parsedJson;
+      if (!finalJson) {
+        let raw = aiResult.rawText.trim();
+        if (raw.startsWith("```json")) {
+          raw = raw.replace(/^```json\s*/, "").replace(/\s*```$/, "");
+        } else if (raw.startsWith("```")) {
+          raw = raw.replace(/^```\s*/, "").replace(/\s*```$/, "");
         }
-      };
-
-      let response: any = null;
-      let lastError: any = null;
-
-      // Attempt across supported models with immediate cascade on high demand (503) or rate limits (429)
-      for (let attempt = 0; attempt < 2 && !response?.text; attempt++) {
-        for (let m = 0; m < modelsToTry.length; m++) {
-          const modelName = modelsToTry[m];
-
-          try {
-            response = await ai.models.generateContent({
-              model: modelName,
-              ...requestPayload
-            });
-
-            if (response && response.text) {
-              // Successfully generated content
-              break;
-            }
-          } catch (err: any) {
-            lastError = err;
-            // Silent fallback between models without logging raw error JSON to stdout
-            if (m < modelsToTry.length - 1) {
-              await new Promise((resolve) => setTimeout(resolve, 150));
-            }
-          }
-        }
-
-        // If first round had transient demand spikes on all models, brief pause before 2nd pass
-        if (!response?.text && attempt === 0) {
-          await new Promise((resolve) => setTimeout(resolve, 800));
-        }
+        finalJson = JSON.parse(raw.trim());
       }
 
-      if (!response || !response.text) {
-        console.error("Gemini failed on all fallback models:", lastError);
-        const errMsg = lastError?.message || "";
-        const isQuotaExceeded = errMsg.includes("429") || errMsg.includes("RESOURCE_EXHAUSTED") || errMsg.includes("Quota exceeded") || errMsg.includes("quota");
-        const isDemandSpike = errMsg.includes("503") || errMsg.includes("UNAVAILABLE") || errMsg.includes("high demand");
-
-        if (isQuotaExceeded) {
-          return res.status(429).json({
-            error: {
-              code: 429,
-              message: "Le quota de requêtes gratuites de l'IA est temporairement atteint. Veuillez patienter environ 20-30 secondes que la limite se réinitialise, ou utilisez votre clé API Gemini personnelle dans le Profil Artiste."
-            }
-          });
+      // Attach sovereign AI metadata for telemetry & UI indicators
+      return res.json({
+        ...finalJson,
+        _aiMeta: {
+          providerUsed: aiResult.providerUsed,
+          modelUsed: aiResult.modelUsed,
+          latencyMs: aiResult.latencyMs,
+          isFallback: aiResult.isFallback,
+          fallbackReason: aiResult.fallbackReason,
+          sovereignty: aiResult.sovereignty,
         }
-
-        if (isDemandSpike) {
-          return res.status(503).json({
-            error: {
-              code: 503,
-              message: "Les serveurs d'analyse IA rencontrent une forte affluence passagère. Veuillez relancer l'analyse dans quelques secondes."
-            }
-          });
-        }
-
-        return res.status(500).json({
-          error: {
-            message: lastError?.message || "Une erreur s'est produite lors de l'analyse de l'œuvre d'art."
-          }
-        });
-      }
-
-      // Clean markdown fences if any and parse JSON
-      let rawText = response.text.trim();
-      if (rawText.startsWith("```json")) {
-        rawText = rawText.replace(/^```json\s*/, "").replace(/\s*```$/, "");
-      } else if (rawText.startsWith("```")) {
-        rawText = rawText.replace(/^```\s*/, "").replace(/\s*```$/, "");
-      }
-
-      const jsonResponse = JSON.parse(rawText.trim());
-      return res.json(jsonResponse);
+      });
 
     } catch (error: any) {
-      console.error("Gemini API Error:", error);
+      console.error("AI Router Execution Error:", error);
       const errMsg = error?.message || "";
       const isQuota = errMsg.includes("429") || errMsg.includes("RESOURCE_EXHAUSTED") || errMsg.includes("Quota");
-      return res.status(isQuota ? 429 : 500).json({
+      const isDemand = errMsg.includes("503") || errMsg.includes("UNAVAILABLE");
+
+      return res.status(isQuota ? 429 : isDemand ? 503 : 500).json({
         error: {
-          code: isQuota ? 429 : 500,
-          message: error.message || "Une erreur s'est produite lors de l'analyse de l'œuvre."
+          code: isQuota ? 429 : isDemand ? 503 : 500,
+          message: isQuota 
+            ? "Le quota de requêtes de l'IA est temporairement atteint. Veuillez patienter quelques secondes."
+            : isDemand
+              ? "Serveurs d'inférence en forte affluence. Veuillez relancer l'analyse dans un instant."
+              : (error.message || "Une erreur s'est produite lors de l'analyse de l'œuvre.")
         }
       });
     }

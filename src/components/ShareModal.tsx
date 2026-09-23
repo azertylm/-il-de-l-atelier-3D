@@ -84,8 +84,8 @@ export default function ShareModal({
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
         await navigator.share({
-          title: "L'Œil de l'Atelier — Le Pont Intelligent Entre Artistes, Galeries & Acheteurs",
-          text: `Découvrez L'Œil de l'Atelier : la plateforme d'art contemporain qui fait gagner un temps précieux aux artistes et galeries, avec cartels muraux QR, audioguide immersif, contrats de vente et certificats d'authenticité.`,
+          title: "l'Œil de l'atelier — Le Pont Intelligent Entre Artistes, Galeries & Acheteurs",
+          text: `Découvrez l'Œil de l'atelier : la plateforme d'art contemporain qui fait gagner un temps précieux aux artistes et galeries, avec cartels muraux QR, audioguide immersif, contrats de vente et certificats d'authenticité.`,
           url: currentLink,
         });
       } catch (err) {
@@ -99,10 +99,10 @@ export default function ShareModal({
   // Pre-formatted messages
   const artistName = profile?.name?.trim() ? profile.name : "L'Atelier";
   
-  const emailSubject = `Découverte & Passerelle Professionnelle : L'Œil de l'Atelier [${artistName}]`;
+  const emailSubject = `Découverte & Passerelle Professionnelle : l'Œil de l'atelier [${artistName}]`;
   const emailBody = `Bonjour,
 
-Je vous partage le lien vers L'Œil de l'Atelier : une plateforme innovante qui révolutionne les échanges entre artistes, galeries d'art et collectionneurs.
+Je vous partage le lien vers l'Œil de l'atelier : une plateforme innovante qui révolutionne les échanges entre artistes, galeries d'art et collectionneurs.
 
 Ce que la plateforme permet :
 1. Pour les GALERISTES & CURATEURS : Fiches techniques d'œuvres normalisées, dossiers de présentation clés en main, cotes justifiées et contrats de dépôt-consignation prêts à signer en 2 minutes (gain de 15h d'échanges par exposition).
@@ -116,13 +116,13 @@ Bien cordialement,
 ${artistName}`;
 
   const whatsappMessage = encodeURIComponent(
-    `🎨 *L'Œil de l'Atelier — Le Pont Intelligent Artistes ⇄ Galeries*\n\n` +
+    `🎨 *l'Œil de l'atelier — Le Pont Intelligent Artistes ⇄ Galeries*\n\n` +
     `Fini les heures perdues en échanges d'e-mails : découvrez les cartels muraux avec QR code, l'audioguide pour les visiteurs, et le générateur de contrats de vente avec Certificats d'Authenticité (COA) en 1 clic.\n\n` +
     `👉 Voir ici : ${currentLink}`
   );
 
   const linkedinText = encodeURIComponent(
-    `Découvrez L'Œil de l'Atelier : le pont intelligent entre artistes plasticiens, galeries d'art contemporain et collectionneurs.\n\n` +
+    `Découvrez l'Œil de l'atelier : le pont intelligent entre artistes plasticiens, galeries d'art contemporain et collectionneurs.\n\n` +
     `Un standard de communication qui fait gagner un temps précieux aux galeristes et met en valeur les visiteurs d'exposition via des cartels muraux à QR code, des audioguides immersifs et des contrats de vente sécurisés avec certificats d'authenticité conformes au Décret Marcus.\n\n${currentLink}`
   );
 

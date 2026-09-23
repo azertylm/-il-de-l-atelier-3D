@@ -10,8 +10,8 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
   fr: {
     // Header & Tagline
     bridge_tagline: "LE PONT INTELLIGENT ENTRE ARTISTES, GALERIES & ACHETEURS",
-    app_title_prefix: "L'Œil de",
-    app_title_suffix: "l'Atelier",
+    app_title_prefix: "l'Œil de",
+    app_title_suffix: "l'atelier",
     app_subtitle: "36 OUTILS IA POUR CRÉER, VALORISER, EXPOSER & VENDRE VOTRE ART",
     theme_light: "Mode Clair",
     theme_dark: "Noir & Or",

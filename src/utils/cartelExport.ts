@@ -143,7 +143,7 @@ export function generateA4CartelsHtml(options: GenerateA4CartelsHtmlOptions): st
         </main>
 
         <footer class="sheet-footer">
-          <span>L'Œil de l'Atelier • Cartels muraux professionnels sans liseré de coupe (découpe nette au massicot ou cutter)</span>
+          <span>l'Œil de l'atelier • Cartels muraux professionnels sans liseré de coupe (découpe nette au massicot ou cutter)</span>
           <span>${pageCartels.length} cartel(s) sur cette feuille</span>
         </footer>
       </div>

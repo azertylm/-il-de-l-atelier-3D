@@ -152,7 +152,7 @@ export default function UrbanArtCircuitModal({
       </div>
     `).join("")}
   </div>
-  <div class="footer">L'Œil de l'Atelier · Plateforme de Curation, Vernissages & Valorisation d'Œuvres</div>
+  <div class="footer">l'Œil de l'atelier · Plateforme de Curation, Vernissages & Valorisation d'Œuvres</div>
 </body>
 </html>`;
 

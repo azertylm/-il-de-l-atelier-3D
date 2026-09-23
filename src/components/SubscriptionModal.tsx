@@ -14,7 +14,7 @@ interface SubscriptionModalProps {
   isOpen: boolean;
   onClose: () => void;
   isSubscribed: boolean;
-  onSubscribe: (plan: "monthly" | "yearly" | "gift", codeUsed?: string) => void;
+  onSubscribe: (plan: "individual" | "pass" | "gift", codeUsed?: string) => void;
   onCancelSubscription: () => void;
   theme?: "dark-gold" | "light";
 }
@@ -61,7 +61,7 @@ export default function SubscriptionModal({
   onCancelSubscription,
   theme = "dark-gold"
 }: SubscriptionModalProps) {
-  const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">("yearly");
+  const [selectedPlan, setSelectedPlan] = useState<"individual" | "pass">("individual");
   const [paymentStep, setPaymentStep] = useState<"choose" | "processing" | "success">("choose");
   const [paymentMethod, setPaymentMethod] = useState<"card" | "apple" | "paypal">("card");
   
@@ -349,16 +349,40 @@ export default function SubscriptionModal({
             </div>
           ) : (
             <>
-              {/* Pricing Cards Grid */}
+              {/* Publisher Ecosystem Header */}
+              <div className={`p-3 border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 font-mono text-[11px] ${
+                isDark ? "bg-[#14120a] border-[#c9a84c]/30 text-neutral-300" : "bg-amber-50/70 border-[#c9a84c]/40 text-stone-800"
+              }`}>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-[#c9a84c] uppercase">ALPHABETTE SASU</span>
+                  <span className="opacity-40">•</span>
+                  <span>Fondé par Valentin RICHAUD à La Grande-Motte</span>
+                </div>
+                <div className="text-[10px] text-neutral-400">
+                  Hébergement Souverain France • Zéro publicité tierce
+                </div>
+              </div>
+
+              {/* No monthly fee policy note */}
+              <div className={`px-3 py-2 border text-[11px] font-mono flex items-start gap-2 ${
+                isDark ? "bg-[#101010] border-white/10 text-neutral-300" : "bg-stone-100 border-stone-200 text-stone-700"
+              }`}>
+                <ShieldCheck className="w-4 h-4 text-[#c9a84c] flex-shrink-0 mt-0.5" />
+                <p className="leading-snug">
+                  <strong>Politique tarifaire directe :</strong> Aucun prélèvement mensuel n'est proposé sur ce pôle afin d'éviter les frais bancaires intermédiaires. Formules annuelles forfaitaires en toute transparence.
+                </p>
+              </div>
+
+              {/* Pricing Cards Grid - 15 € / an vs 40 € / an */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                 
-                {/* Plan 1: Mensuel (3 € / mois) */}
+                {/* Plan 1: Application Individuelle (15 € TTC / an) */}
                 <div 
-                  onClick={() => setSelectedPlan("monthly")}
-                  className={`p-5 border cursor-pointer relative transition-all duration-300 flex flex-col justify-between ${
-                    selectedPlan === "monthly"
+                  onClick={() => setSelectedPlan("individual")}
+                  className={`p-4 sm:p-5 border cursor-pointer relative transition-all duration-300 flex flex-col justify-between ${
+                    selectedPlan === "individual"
                       ? isDark 
-                        ? "bg-[#151515] border-[#c9a84c] shadow-[0_0_20px_rgba(201,168,76,0.15)]" 
+                        ? "bg-[#151515] border-[#c9a84c] shadow-[0_0_20px_rgba(201,168,76,0.18)]" 
                         : "bg-white border-[#c9a84c] shadow-lg"
                       : isDark
                         ? "bg-black/50 border-white/10 hover:border-white/20 opacity-80"
@@ -368,38 +392,39 @@ export default function SubscriptionModal({
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
                       <span className="text-[10px] font-mono uppercase tracking-widest font-bold text-neutral-400">
-                        Formule Mensuelle
+                        Application Individuelle
                       </span>
                       <input 
                         type="radio" 
                         name="plan" 
-                        checked={selectedPlan === "monthly"} 
-                        onChange={() => setSelectedPlan("monthly")}
+                        checked={selectedPlan === "individual"} 
+                        onChange={() => setSelectedPlan("individual")}
                         className="accent-[#c9a84c]"
                       />
                     </div>
                     
                     <div>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-3xl font-serif font-bold text-[#c9a84c]">3 €</span>
-                        <span className="text-xs text-neutral-400 font-sans">/ mois</span>
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-3xl font-serif font-bold text-[#c9a84c]">15 €</span>
+                        <span className="text-xs text-neutral-400 font-sans font-medium">TTC / an</span>
                       </div>
-                      <p className="text-[11px] text-neutral-400 mt-1">
-                        Sans engagement, résiliable à tout moment.
+                      <h4 className="font-bold text-xs text-white mt-1">L'Œil de l'Atelier</h4>
+                      <p className="text-[11px] text-neutral-400 mt-1 leading-relaxed">
+                        Accès illimité à l'application <strong>L'Œil de l'Atelier</strong> pendant 1 an. (Chaque application comme IADébat ou Infos Perso est également à 15 €/an).
                       </p>
                     </div>
                   </div>
 
-                  <div className="pt-4 border-t border-white/5 text-[10px] uppercase tracking-wider text-neutral-400 font-mono">
-                    Facturé 3 € chaque mois
+                  <div className="pt-3 border-t border-white/5 text-[10px] uppercase tracking-wider text-neutral-400 font-mono font-bold">
+                    15 € TTC / an • Outil Unique
                   </div>
                 </div>
 
-                {/* Plan 2: Annuel Spécial Lancement (20 € / an) */}
+                {/* Plan 2: Le Pass ALPHABETTE (40 € TTC / an) */}
                 <div 
-                  onClick={() => setSelectedPlan("yearly")}
-                  className={`p-5 border cursor-pointer relative transition-all duration-300 flex flex-col justify-between ${
-                    selectedPlan === "yearly"
+                  onClick={() => setSelectedPlan("pass")}
+                  className={`p-4 sm:p-5 border cursor-pointer relative transition-all duration-300 flex flex-col justify-between ${
+                    selectedPlan === "pass"
                       ? isDark 
                         ? "bg-[#16140e] border-[#c9a84c] shadow-[0_0_25px_rgba(201,168,76,0.25)]" 
                         : "bg-[#fffdf7] border-[#c9a84c] shadow-xl"
@@ -408,41 +433,39 @@ export default function SubscriptionModal({
                         : "bg-stone-50 border-stone-200 hover:border-stone-300 opacity-80"
                   }`}
                 >
-                  {/* Badge Spécial Lancement */}
-                  <div className="absolute -top-3 right-3 bg-[#c9a84c] text-black font-mono font-black text-[9px] px-2.5 py-0.5 uppercase tracking-widest shadow-md">
-                    1ÈRE ANNÉE DE LANCEMENT
+                  {/* Badge Recommandé */}
+                  <div className="absolute -top-2.5 right-3 bg-[#c9a84c] text-black font-mono font-black text-[9px] px-2.5 py-0.5 uppercase tracking-widest shadow-md">
+                    BOUQUET INTÉGRAL
                   </div>
 
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
                       <span className="text-[10px] font-mono uppercase tracking-widest font-bold text-[#c9a84c]">
-                        Formule Annuelle
+                        Le Pass ALPHABETTE
                       </span>
                       <input 
                         type="radio" 
                         name="plan" 
-                        checked={selectedPlan === "yearly"} 
-                        onChange={() => setSelectedPlan("yearly")}
+                        checked={selectedPlan === "pass"} 
+                        onChange={() => setSelectedPlan("pass")}
                         className="accent-[#c9a84c]"
                       />
                     </div>
                     
                     <div>
                       <div className="flex items-baseline gap-1.5">
-                        <span className="text-3xl font-serif font-bold text-[#c9a84c]">20 €</span>
-                        <span className="text-xs text-neutral-400 font-sans">/ an</span>
-                        <span className="text-[10px] font-mono bg-[#c9a84c]/20 text-[#c9a84c] border border-[#c9a84c]/40 px-1.5 py-0.5 font-bold">
-                          -44% d'économie
-                        </span>
+                        <span className="text-3xl font-serif font-bold text-[#c9a84c]">40 €</span>
+                        <span className="text-xs text-neutral-400 font-sans font-medium">TTC / an</span>
                       </div>
-                      <p className="text-[11px] text-neutral-400 mt-1">
-                        Offre privilège pour la 1ère année de lancement (soit ~1,66 €/mois).
+                      <h4 className="font-bold text-xs text-[#c9a84c] mt-1">Bouquet Actuel & Futur</h4>
+                      <p className="text-[11px] text-neutral-400 mt-1 leading-relaxed">
+                        Accès complet à <strong>l'ensemble du bouquet applicatif actuel</strong> (L'Œil de l'Atelier, IADébat, Infos Perso...) et à <strong>toutes les futures applications</strong> ALPHABETTE.
                       </p>
                     </div>
                   </div>
 
-                  <div className="pt-4 border-t border-white/5 text-[10px] uppercase tracking-wider text-[#c9a84c] font-mono font-bold">
-                    Accès Pro Complet pendant 1 an
+                  <div className="pt-3 border-t border-white/5 text-[10px] uppercase tracking-wider text-[#c9a84c] font-mono font-bold">
+                    40 € TTC / an • Tout le Bouquet
                   </div>
                 </div>
 
@@ -554,17 +577,17 @@ export default function SubscriptionModal({
                   ) : (
                     <>
                       <Zap className="w-4 h-4" />
-                      {selectedPlan === "yearly" 
-                        ? "S'abonner pour 20 € / an (Offre Lancement)" 
-                        : "S'abonner pour 3 € / mois"
+                      {selectedPlan === "pass"
+                        ? "Souscrire au Pass ALPHABETTE (40 € TTC / an)"
+                        : "Souscrire à L'Œil de l'Atelier (15 € TTC / an)"
                       }
                       <ArrowRight className="w-4 h-4 ml-1" />
                     </>
                   )}
                 </button>
 
-                <p className="text-[10px] text-center text-neutral-500 font-sans">
-                  Paiement sans engagement. Annulation en 1 clic. Garantie satisfait ou remboursé sous 14 jours.
+                <p className="text-[10px] text-center text-neutral-500 font-sans leading-relaxed">
+                  Abonnement annuel forfaitaire sans frais cachés. Aucun prélèvement mensuel afin d'éliminer les commissions bancaires intermédiaires.
                 </p>
               </div>
             </>

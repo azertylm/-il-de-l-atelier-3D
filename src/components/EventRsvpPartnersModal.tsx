@@ -349,7 +349,7 @@ export default function EventRsvpPartnersModal({
       `).join("")}
     </tbody>
   </table>
-  <p style="margin-top: 25px; font-size: 11px; color: #777;">Généré par L'Œil de l'Atelier · Plateforme de Curation & Vernissage Artistique</p>
+  <p style="margin-top: 25px; font-size: 11px; color: #777;">Généré par l'Œil de l'atelier · Plateforme de Curation & Vernissage Artistique</p>
 </body>
 </html>`;
 

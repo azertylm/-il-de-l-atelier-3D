@@ -756,7 +756,7 @@ export default function ResultsPanel({
                       <span className="scale-75">AUTHENTIQUE</span>
                       <div className="absolute inset-0.5 border border-dashed border-[#c9a84c]/30 rounded-full" />
                     </div>
-                    <span className="text-[9px] text-neutral-500 uppercase block font-bold leading-none">L'Œil de l'Atelier</span>
+                    <span className="text-[9px] text-neutral-500 uppercase block font-bold leading-none">l'Œil de l'atelier</span>
                     <span className="text-[8px] sm:text-[9px] uppercase font-bold text-[#c9a84c]">Sceau Numérique</span>
                   </div>
                   <div className="text-right border-t border-dashed border-stone-400 w-28 sm:w-36 pt-1 font-sans">
@@ -1365,7 +1365,7 @@ export default function ResultsPanel({
           Expertise Visuelle d'Atelier · Propulsé par Intelligence Artificielle Pro
         </span>
         <span className="text-[10px] text-neutral-400 font-sans italic font-bold">
-          L'Œil de l'Atelier observe et analyse le geste sensible.
+          l'Œil de l'atelier observe et analyse le geste sensible.
         </span>
       </div>
     </div>

@@ -395,7 +395,7 @@ Pour l'Artiste :                                Pour la Galerie :
                       </span>
                     </div>
                     <h3 className="font-serif text-xl sm:text-2xl font-bold tracking-tight">
-                      Pourquoi Galeristes et Artistes gagnent un temps précieux avec L'Œil de l'Atelier
+                      Pourquoi Galeristes et Artistes gagnent un temps précieux avec l'Œil de l'atelier
                     </h3>
                     <p className={`text-xs sm:text-sm font-sans leading-relaxed ${isDark ? "text-neutral-300" : "text-stone-700"}`}>
                       La relation entre artistes et galeristes souffre souvent de frottements logistiques : dossiers incomplets, dimensions floues, cartels bricolés la veille du vernissage et doutes sur les prix. Cette plateforme normalise l'ensemble des échanges pour se concentrer sur l'essentiel : <strong>la rencontre esthétique et la vente aux collectionneurs</strong>.
@@ -436,7 +436,7 @@ Pour l'Artiste :                                Pour la Galerie :
                 </div>
               </div>
 
-              {/* Tableau Comparatif : Avant vs Avec L'Œil de l'Atelier */}
+              {/* Tableau Comparatif : Avant vs Avec l'Œil de l'atelier */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Colonne d'Hier (Rouge) */}
                 <div className={`p-5 border space-y-4 ${
@@ -468,13 +468,13 @@ Pour l'Artiste :                                Pour la Galerie :
                   </ul>
                 </div>
 
-                {/* Colonne L'Œil de l'Atelier (Vert / Or) */}
+                {/* Colonne l'Œil de l'atelier (Vert / Or) */}
                 <div className={`p-5 border space-y-4 ${
                   isDark ? "bg-emerald-950/20 border-emerald-500/40 text-emerald-200" : "bg-emerald-50 border-emerald-300 text-emerald-950"
                 }`}>
                   <div className="flex items-center justify-between border-b pb-2 border-emerald-500/30">
                     <h4 className="font-serif font-bold text-sm uppercase tracking-wide flex items-center gap-2 text-emerald-400">
-                      <CheckCircle2 className="w-4 h-4" /> Avec L'Œil de l'Atelier (Gain : 15 min)
+                      <CheckCircle2 className="w-4 h-4" /> Avec l'Œil de l'atelier (Gain : 15 min)
                     </h4>
                     <span className="text-[10px] font-mono text-emerald-400 font-bold">Fluidité Professionnelle</span>
                   </div>
@@ -528,7 +528,7 @@ Site web : ${profile.web || "Non renseigné"}
 - Assurance transport : Clou à clou obligatoire (valeur agréée)
 - Modalités de commission recommandées : 50/50 ou 40/60 selon contrat de dépôt
 
-Généré via la plateforme L'Œil de l'Atelier • Passerelle Galeries`;
+Généré via la plateforme l'Œil de l'atelier • Passerelle Galeries`;
                       navigator.clipboard.writeText(text);
                       setCopiedKey("fiche_tech");
                       setTimeout(() => setCopiedKey(null), 2500);

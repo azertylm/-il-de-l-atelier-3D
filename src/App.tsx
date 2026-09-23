@@ -40,6 +40,9 @@ import UserAccountModal from "./components/UserAccountModal.js";
 import EventRsvpPartnersModal from "./components/EventRsvpPartnersModal.js";
 import UrbanArtCircuitModal from "./components/UrbanArtCircuitModal.js";
 import ModularPortalModal from "./components/ModularPortalModal.js";
+import SovereignStatusBadge from "./components/SovereignStatusBadge.js";
+import SovereignInfoModal from "./components/SovereignInfoModal.js";
+import { askAI, setLastTelemetry } from "./services/aiService.js";
 
 export interface ExhibitionArtwork {
   id: string;
@@ -231,6 +234,10 @@ async function parseApiResponse(response: Response, defaultErrMsg = "Erreur lors
     throw new Error(data?.error?.message || defaultErrMsg);
   }
 
+  if (data && data._aiMeta) {
+    setLastTelemetry(data._aiMeta);
+  }
+
   return data;
 }
 
@@ -256,9 +263,10 @@ export default function App() {
   const [logbookNotification, setLogbookNotification] = useState<{ message: string; visible: boolean } | null>(null);
   const [isDonationOpen, setIsDonationOpen] = useState<boolean>(false);
   
-  // Subscription & Pro States (3 € / mois ou 20 € / an)
+  // Subscription & Pro States (ALPHABETTE SASU 15 € TTC / an ou Pass 40 € TTC / an)
   const [isSubscriptionActive, setIsSubscriptionActive] = useState<boolean>(false);
   const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState<boolean>(false);
+  const [isSovereignModalOpen, setIsSovereignModalOpen] = useState<boolean>(false);
   const [isArtworkToolsModalOpen, setIsArtworkToolsModalOpen] = useState<boolean>(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
   const [isHubModalOpen, setIsHubModalOpen] = useState<boolean>(false);
@@ -1141,7 +1149,7 @@ export default function App() {
   };
 
   // Handler: Subscription Activation
-  const handleSubscribe = (plan: "monthly" | "yearly" | "gift", codeUsed?: string) => {
+  const handleSubscribe = (plan: "individual" | "pass" | "gift" | string, codeUsed?: string) => {
     setIsSubscriptionActive(true);
     localStorage.setItem("oeilAtelier_subscriptionActive", "true");
     localStorage.setItem("oeilAtelier_subscriptionPlan", plan);
@@ -1631,7 +1639,7 @@ export default function App() {
               <h1 className={`font-serif font-light text-3xl sm:text-5xl md:text-6xl tracking-tight leading-none transition-colors duration-300 ${
                 theme === "dark-gold" ? "text-white" : "text-stone-950"
               }`}>
-                L'Œil de <span className="italic text-[#c9a84c] font-light font-serif">{t("app_title_suffix", "l'Atelier")}</span>
+                {t("app_title_prefix", "l'Œil de")} <span className="italic text-[#c9a84c] font-light font-serif">{t("app_title_suffix", "l'atelier")}</span>
               </h1>
               <p className={`text-[9px] sm:text-[10px] tracking-[0.15em] uppercase font-sans mt-2 sm:mt-3.5 transition-colors duration-300 font-bold ${
                 theme === "dark-gold" ? "text-[#c9a84c]" : "text-[#9c7d2b]"
@@ -1642,6 +1650,12 @@ export default function App() {
 
             {/* Quick System Utilities: Language, Theme & Cloud */}
             <div className="flex items-center justify-center md:justify-end gap-2 shrink-0 flex-wrap">
+              {/* Sovereign & Hybrid AI Status Badge (ALPHABETTE) */}
+              <SovereignStatusBadge 
+                theme={theme} 
+                onClick={() => setIsSovereignModalOpen(true)} 
+              />
+
               {/* Language Selector */}
               <button
                 id="language-selector-btn"
@@ -3217,7 +3231,7 @@ export default function App() {
       }`}>
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-3">
           <div className="flex items-center gap-2">
-            <span className="font-serif italic font-light text-sm text-[#c9a84c]">L'Œil de l'Atelier</span>
+            <span className="font-serif italic font-light text-sm text-[#c9a84c]">l'Œil de l'atelier</span>
             <span className="opacity-40">•</span>
             <span>Plateforme d'Expertise Artistique, Scénographie & Vente Directe</span>
           </div>
@@ -3285,13 +3299,21 @@ export default function App() {
         theme={theme}
       />
 
-      {/* Subscription Pro Modal (3 € / mois ou 20 € / an) */}
+      {/* Subscription Pro Modal (ALPHABETTE SASU 15 € / an ou Pass 40 € / an) */}
       <SubscriptionModal
         isOpen={isSubscriptionModalOpen}
         onClose={() => setIsSubscriptionModalOpen(false)}
         isSubscribed={isSubscriptionActive}
         onSubscribe={handleSubscribe}
         onCancelSubscription={handleCancelSubscription}
+        theme={theme}
+      />
+
+      {/* Sovereign AI & ALPHABETTE Ecosystem Modal */}
+      <SovereignInfoModal
+        isOpen={isSovereignModalOpen}
+        onClose={() => setIsSovereignModalOpen(false)}
+        onOpenSubscription={() => setIsSubscriptionModalOpen(true)}
         theme={theme}
       />
 

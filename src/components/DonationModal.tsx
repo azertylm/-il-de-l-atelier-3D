@@ -341,7 +341,7 @@ export default function DonationModal({
                 </span>
                 
                 <h2 className="font-serif font-light text-3xl sm:text-4xl italic tracking-wide leading-tight mb-6">
-                  L'Œil de l'Atelier
+                  l'Œil de l'atelier
                 </h2>
 
                 <p className="text-xs font-sans text-neutral-400 uppercase tracking-widest max-w-md mx-auto leading-relaxed mb-6">

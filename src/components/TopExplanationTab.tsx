@@ -438,7 +438,7 @@ export default function TopExplanationTab({
                       Vue d'ensemble
                     </span>
                     <h3 className="font-serif font-bold text-base sm:text-lg uppercase tracking-wide">
-                      Bienvenue dans L'Œil de l'Atelier
+                      Bienvenue dans l'Œil de l'atelier
                     </h3>
                   </div>
                   <p className={`text-xs sm:text-sm leading-relaxed ${isDark ? "text-neutral-200" : "text-stone-700"}`}>

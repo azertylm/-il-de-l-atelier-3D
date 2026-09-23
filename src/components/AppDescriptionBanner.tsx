@@ -95,7 +95,7 @@ export default function AppDescriptionBanner({
               <h3 className={`text-base sm:text-lg font-serif font-bold mt-2.5 ${
                 isDark ? "text-white" : "text-stone-950"
               }`}>
-                Pourquoi L'Œil de l'Atelier ?
+                Pourquoi l'Œil de l'atelier ?
               </h3>
               <p className={`text-xs sm:text-sm leading-relaxed font-sans mt-2 font-medium ${
                 isDark ? "text-neutral-200" : "text-stone-700"

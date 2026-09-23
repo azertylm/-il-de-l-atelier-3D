@@ -220,7 +220,7 @@ export default function HistoryModal({
   }).join("")}
 
   <footer style="margin-top: 30px; text-align: center; font-size: 10px; color: #888; border-top: 1px solid #ccc; padding-top: 10px;">
-    Document généré par l'Œil de l'Atelier · Registre d'atelier de l'artiste
+    Document généré par l'Œil de l'atelier · Registre d'atelier de l'artiste
   </footer>
 </body>
 </html>`;

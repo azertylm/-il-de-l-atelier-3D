@@ -1410,7 +1410,7 @@ export default function QrSalesCartelModal({
 
                   {/* Bas du cartel */}
                   <div className="mt-5 pt-3 border-t border-black/10 dark:border-white/10 flex items-center justify-between text-[9px] font-mono opacity-60">
-                    <span>L'Œil de l'Atelier • Passerelle Art & Galerie</span>
+                    <span>l'Œil de l'atelier • Passerelle Art & Galerie</span>
                     <span>COA N° {artworkYear}-{Math.abs(artworkTitle.split("").reduce((a,b)=>((a<<5)-a)+b.charCodeAt(0),0)).toString(16).slice(0,6).toUpperCase()}</span>
                   </div>
                 </div>
@@ -2573,7 +2573,7 @@ export default function QrSalesCartelModal({
                       {/* Bottom Sheet Footer */}
                       <div className="flex items-center justify-between pt-2 mt-4 border-t border-stone-200 text-[9px] font-mono text-stone-400">
                         <span>
-                          L'Œil de l'Atelier • Cartels muraux professionnels sans contour de découpe pour massicot et cutter
+                          l'Œil de l'atelier • Cartels muraux professionnels sans contour de découpe pour massicot et cutter
                         </span>
                         <span>
                           {sheetItems.length} cartel(s) sur cette feuille
